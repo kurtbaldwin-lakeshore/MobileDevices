@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Food Truck POS Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a console shell. Left rail of sections, top context bar (org unit + licenses), work area on the right. Collapses to a top tab strip on phones. */
+:root {
+  --bg: #f3f6f6; --panel: #ffffff; --ink: #172327; --muted: #5b6b70; --line: #d6e1df;
+  --accent: #0e7c7b; --accent-ink: #ffffff; --accent-soft: #e2f1f0; --amber: #e8a33d; --amber-soft: #fbefdb;
+  --good: #2e7d4f; --good-soft: #e3f3e8; --warn: #9a6200; --warn-soft: #fff3d6; --bad: #b5482f; --bad-soft: #f9e3dd;
+  --rail: #12343b; --rail-ink: #e8f1f0; --rail-muted: #9fb7b5;
+  --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.45; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.mono { font-family: var(--font-mono); font-size: 0.9em; }
+.shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100%; }
+.rail { background: var(--rail); color: var(--rail-ink); padding-block: 18px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; display: flex; flex-direction: column; gap: 18px; }
+.brand { display: grid; gap: 2px; }
+.brand b { font-size: 17px; letter-spacing: 0.01em; }
+.brand span { color: var(--rail-muted); font-size: 12px; }
+.nav { display: grid; gap: 2px; }
+.nav button { all: unset; cursor: pointer; padding: 8px 10px; border-radius: 6px; color: var(--rail-ink); display: flex; justify-content: space-between; gap: 8px; }
+.nav button:hover { background: rgba(255,255,255,0.07); }
+.nav button[aria-current="page"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.nav button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.nav .count { font-family: var(--font-mono); font-size: 12px; opacity: 0.85; }
+.rail-foot { margin-top: auto; color: var(--rail-muted); font-size: 12px; display: grid; gap: 8px; }
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding-block: 12px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--panel); border-bottom: 1px solid var(--line); }
+.topbar .ctx { color: var(--muted); font-size: 13px; }
+.topbar .ctx b { color: var(--ink); }
+.lic { margin-left: auto; display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+.meter { width: 120px; height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.work { padding-block: 20px 40px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; align-content: start; }
+h1 { font-size: 24px; margin: 0; text-wrap: balance; }
+h2 { font-size: 17px; margin: 0; }
+p { margin: 0; }
+.sub { color: var(--muted); max-width: 70ch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 4px; }
+.tile .n { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile .l { color: var(--muted); font-size: 13px; }
+.btn { cursor: pointer; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 12px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.small { padding: 3px 8px; font-size: 13px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+input[type=text], select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+textarea { width: 100%; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tree { display: grid; gap: 2px; }
+.tree button { all: unset; cursor: pointer; padding: 5px 8px; border-radius: 6px; display: flex; gap: 6px; align-items: center; }
+.tree button:hover { background: var(--accent-soft); }
+.tree button[aria-selected="true"] { background: var(--accent-soft); font-weight: 700; box-shadow: inset 3px 0 0 var(--accent); }
+.tree button:focus-visible { outline: 2px solid var(--amber); }
+.tree .twig { color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: pre; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--accent-soft); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: none; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.mute { background: var(--line); color: var(--muted); }
+.policy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 300px); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.policy:last-child { border-bottom: none; }
+.policy .help { color: var(--muted); font-size: 13px; }
+.src { font-size: 12px; color: var(--muted); }
+.src.local { color: var(--accent); font-weight: 700; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { all: unset; cursor: pointer; padding: 8px 12px; border-bottom: 3px solid transparent; }
+.tabs button[aria-selected="true"] { border-color: var(--accent); font-weight: 700; }
+.tabs button:focus-visible { outline: 2px solid var(--amber); }
+.mission { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.mission:last-child { border-bottom: none; }
+.check { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.check.done { background: var(--good); color: var(--panel); }
+.check.todo { border: 2px solid var(--line); color: var(--muted); }
+.hint { color: var(--muted); font-size: 13px; }
+.ticket { background: var(--amber-soft); border: 1px solid var(--amber); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 4px; }
+.ticket b { color: var(--ink); }
+.log { display: grid; gap: 0; }
+.log div { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.log time { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.notice { border-radius: var(--r); padding: 10px 12px; font-size: 14px; }
+.notice.bad { background: var(--bad-soft); color: var(--bad); }
+.notice.good { background: var(--good-soft); color: var(--good); }
+.notice.info { background: var(--accent-soft); color: var(--ink); }
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--rail); color: var(--rail-ink); padding: 10px 14px; border-radius: var(--r); box-shadow: 0 6px 24px rgba(0,0,0,0.25); max-width: min(360px, calc(100vw - 32px)); }
+/* Chromebook preview */
+.laptop { width: 100%; max-width: 640px; }
+.screen { aspect-ratio: 16 / 10; max-width: 100%; border: 10px solid #1e2427; border-radius: 12px 12px 4px 4px; position: relative; overflow: hidden; background: #24343a; color: #fff; }
+.base { height: 14px; background: #2c3438; border-radius: 0 0 14px 14px; margin: 0 -4%; }
+.wall-school { background: radial-gradient(circle at 30% 30%, #1b8f8c, #0b3d42 70%); }
+.wall-free { background: repeating-linear-gradient(45deg, #b04ad1 0 24px, #ff8a00 24px 48px, #2ec4ff 48px 72px); }
+.desk { position: absolute; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 12px; gap: 8px; }
+.wall-label { font-size: 13px; background: rgba(0,0,0,0.35); padding: 4px 8px; border-radius: 6px; justify-self: start; }
+.browser { background: #fff; color: #172327; border-radius: 8px; align-self: center; justify-self: center; width: min(88%, 460px); padding: 10px; display: grid; gap: 8px; font-size: 13px; }
+.browser .bar { display: flex; gap: 6px; }
+.browser input { flex: 1; background: #eef3f3; border: 1px solid #c9d6d4; color: #172327; }
+.shelf { justify-self: center; display: flex; gap: 6px; background: rgba(0,0,0,0.45); padding: 6px 10px; border-radius: 99px; flex-wrap: wrap; justify-content: center; }
+.shelf span { background: rgba(255,255,255,0.9); color: #172327; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+.lock { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px; padding: 20px; background: #0d1416; }
+.lock .msg { max-width: 40ch; font-size: 15px; }
+.kiosk { position: absolute; inset: 0; background: #f4f7fb; color: #172327; display: grid; place-content: center; text-align: center; gap: 8px; padding: 16px; }
+.signin { position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; text-align: center; background: #20323a; }
+.signin .card { background: #fff; color: #172327; border-radius: 10px; padding: 16px 20px; display: grid; gap: 8px; min-width: 220px; }
+.overlay { position: fixed; inset: 0; background: rgba(8,16,18,0.55); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.dialog { background: var(--panel); border-radius: 12px; border: 1px solid var(--line); width: min(540px, 100%); max-height: 90vh; overflow: auto; padding: 18px; display: grid; gap: 12px; }
+.disclaimer { font-size: 12px; color: var(--muted); }
+@media (max-width: 760px) {
+  .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .rail { padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 10px; }
+  .nav { grid-auto-flow: column; overflow-x: auto; }
+  .nav button { white-space: nowrap; }
+  .rail-foot { display: none; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .policy { grid-template-columns: minmax(0, 1fr); }
+  .lic { margin-left: 0; }
+  .topbar, .work { padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+}
+@media (prefers-reduced-motion: no-preference) { .nav button, .btn, .tree button { transition: background 0.15s, border-color 0.15s; } }
+</style>
+<style>
+/* POS additions */
+.stepper { display: grid; gap: 12px; align-content: start; }
+body { margin: 0; }
+.regwrap { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); gap: 18px; align-items: start; }
+.items { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.item { cursor: pointer; border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 12px; min-height: 76px; display: grid; gap: 4px; align-content: start; text-align: left; }
+.item:hover { border-color: var(--accent); }
+.item b { font-size: 15px; }
+.item span { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.item.food { box-shadow: inset 4px 0 0 var(--amber); }
+.item.pack { box-shadow: inset 4px 0 0 var(--accent); }
+.item:disabled { opacity: 0.5; cursor: not-allowed; }
+.item .sold { color: var(--bad); font-weight: 700; }
+.cart { display: grid; gap: 6px; }
+.cartline { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: 14px; }
+.totals { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-variant-numeric: tabular-nums; font-size: 14px; border-top: 1px solid var(--line); padding-top: 8px; }
+.totals .grand { font-size: 20px; font-weight: 700; }
+.paygrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.paygrid .btn { padding: 12px; font-weight: 700; }
+.cust { background: var(--amber-soft); border: 1px solid var(--amber); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 6px; }
+.cust .who { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); }
+.cust q { font-size: 16px; font-style: italic; quotes: "\201C" "\201D"; }
+.netpill { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: var(--good); }
+.dot.off { background: var(--bad); }
+.bars { display: grid; gap: 6px; }
+.bar { display: grid; grid-template-columns: 150px minmax(0, 1fr) 90px; gap: 8px; align-items: center; font-size: 14px; font-variant-numeric: tabular-nums; }
+.bar i { display: block; height: 14px; background: var(--accent); border-radius: 4px; min-width: 2px; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.denoms { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.denom { border: 1px dashed var(--line); border-radius: 8px; padding: 8px; display: grid; gap: 2px; text-align: center; }
+.denom b { font-size: 18px; }
+.chalk { background: #23302c; color: #f4f1e6; border-radius: var(--r); padding: 14px 16px; display: grid; gap: 4px; font-size: 15px; border: 6px solid #6b4f2e; }
+.chalk b { font-size: 17px; letter-spacing: 0.04em; }
+.recipe label { display: inline-flex; gap: 4px; align-items: center; margin-right: 12px; font-size: 14px; }
+input[type=number], input[type=password] { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0; width: 110px; }
+@media (max-width: 900px) { .regwrap { grid-template-columns: minmax(0, 1fr); } }
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <a href="index.html" class="hub-back" style="color:var(--rail-ink);font-size:13px;text-decoration:underline;text-underline-offset:3px">&larr; All simulators</a><div class="brand"><b>Truck POS</b><span>Big Lake Curds &amp; Brats · training</span></div>
+    <nav class="nav" id="nav" aria-label="Sections"></nav>
+    <div class="rail-foot">
+      <span>Food Truck POS Simulator for 10-150-164 Mobile Devices. A practice tool modeled on tablet point-of-sale apps; not a real payment system and not affiliated with any POS or payment company. No real cards or money. Big Lake Curds &amp; Brats is fictional.</span>
+      <button class="btn small" id="resetBtn" style="color:var(--rail-ink);background:transparent;border-color:var(--rail-muted)">Reset simulator</button>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="ctx">Business <b>Big Lake Curds &amp; Brats</b></div>
+      <div class="ctx" id="whoCtx"></div>
+      <div class="ctx netpill" id="netCtx"></div>
+      <div class="lic" id="lic"></div>
+    </header>
+    <main class="work" id="work"></main>
+  </div>
+</div>
+<div id="layer"></div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmt = (c) => (c < 0 ? "-" : "") + "$" + (Math.abs(c) / 100).toFixed(2);
+  const toCents = (v) => Math.round(parseFloat(String(v).replace(/[$,\s]/g, "")) * 100);
+
+  // ---------- Story data ----------
+  const ING = [
+    { id: "curds", name: "Cheese curds (basket portions)", start: 8, rop: 10, par: 40 },
+    { id: "brat", name: "Brats", start: 18, rop: 8, par: 30 },
+    { id: "bun", name: "Buns", start: 14, rop: 8, par: 30 },
+    { id: "water", name: "Bottled water", start: 12, rop: 6, par: 24 },
+    { id: "rootbeer", name: "Root beer (bottles)", start: 10, rop: 4, par: 24 },
+    { id: "chips", name: "Chips (bags)", start: 6, rop: 3, par: 20 },
+  ];
+  const ingName = (id) => ING.find((i) => i.id === id).name;
+  const DANA_PIN = "2580";
+  const CUSTOMERS = [
+    { n: 1, time: "11:05", say: "One cheese curds with ranch, and a root beer.", want: ["curds+ranch", "rootbeer"], pay: "cash", hands: 2000 },
+    { n: 2, time: "11:12", say: "Two brats, please.", want: ["brat", "brat"], pay: "tap", tip: 18, payText: "Holds up a contactless card to tap." },
+    { n: 3, time: "11:20", say: "The combo and a water.", want: ["combo", "water"], pay: "phone", tip: 20, payText: "Holds up a phone to pay with a mobile wallet." },
+    { n: 4, time: "11:31", say: "Just these, thanks.", note: "Sets a bag of chips and a bottled water on the counter. Scan them (or tap them on the menu).", want: ["chips", "water"], pay: "chip", payText: "Has a chip card ready." },
+    { n: 5, time: "11:45", say: "Two cheese curds, one of them with ranch, and a brat.", want: ["curds+ranch", "curds", "brat"], pay: "chip", decline: true, then: "cash", hands: 4000, payText: "Inserts a chip card. (If that doesn't work, they have cash.)" },
+    { n: 6, time: "12:02", say: "Two combos and two root beers.", want: ["combo", "combo", "rootbeer", "rootbeer"], pay: "tap", tip: 15, payText: "Taps a contactless card." },
+    { n: 7, time: "12:15", say: "A combo and a cheese curds. We're splitting it evenly.", want: ["combo", "curds"], pay: "tap", split: 2, payText: "Two friends, each with a card to tap." },
+    { n: 8, time: "12:24", say: "Three brats and three waters for my crew.", want: ["brat", "brat", "brat", "water", "water", "water"], pay: "chip", payText: "Inserts a chip card. No cash on them." },
+    { n: 9, time: "12:40", refund: true, say: "I was Customer 1. My curds were cold by the time I sat down. Can I get my money back for the curds?" },
+    { n: 10, time: "12:55", say: "Two cheese curds and a root beer. If you're out of curds, make it two brats.", want: ["curds", "curds", "rootbeer"], alt: ["brat", "brat", "rootbeer"], pay: "tap", tip: 18, payText: "Taps a contactless card." },
+  ];
+  const METHOD = { cash: "Cash", chip: "Chip card", tap: "Tap (contactless)", phone: "Phone wallet" };
+
+  function seed() {
+    const inv = {}, rop = {}; ING.forEach((i) => { inv[i.id] = i.start; rop[i.id] = i.rop; });
+    return {
+      v: 1, student: "",
+      menu: [
+        { id: "m-water", name: "Bottled Water", price: 200, pack: "water", upc: "200001000010", mods: [], recipe: ["water"] },
+        { id: "m-rootbeer", name: "Root Beer", price: 300, pack: "rootbeer", upc: "200001000027", mods: [], recipe: ["rootbeer"] },
+        { id: "m-chips", name: "Chips", price: 200, pack: "chips", upc: "200001000034", mods: [], recipe: ["chips"] },
+      ],
+      set: { tax: 0, tips: "Off", receipts: "Ask the customer", marketing: "Never use receipt contacts for marketing", offline: "Off", offLimit: 0 },
+      staff: [{ id: "s-dana", name: "Gina Kowalski", role: "Owner and manager", pin: DANA_PIN }], signedIn: "s-dana",
+      inv, rop, onOrder: {}, cart: [], open: false, ci: 0, online: true, orders: [], paidOuts: [], counted: null,
+      flags: {}, view: "home", setTab: "menu",
+      log: [{ t: stamp(), m: "Simulator started. The menu has drinks and chips only. The food items still need to be set up." }],
+    };
+  }
+  function stamp() { return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+
+  // ---------- State ----------
+  const KEY = "md-pos-sim-v1";
+  let S;
+  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+  if (!S || S.v !== 1) S = seed();
+  let pay = null; // in-progress payment (not saved)
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage blocked: keep working in memory */ } }
+  function log(m) { S.log.unshift({ t: stamp(), m }); if (S.log.length > 300) S.log.length = 300; }
+  let toastTimer;
+  function toast(m) { const l = $("#layer"); const old = l.querySelector(".toast"); if (old) old.remove(); const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); t.textContent = m; l.appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 3400); }
+
+  // ---------- Model helpers ----------
+  const item = (id) => S.menu.find((m) => m.id === id);
+  function kindOf(it) { if (it.pack) return it.pack; const n = it.name.toLowerCase(); if (/combo/.test(n)) return "combo"; if (/curd/.test(n)) return "curds"; if (/brat/.test(n)) return "brat"; return "other"; }
+  const findKind = (k, price) => S.menu.find((m) => !m.pack && kindOf(m) === k && (price == null || m.price === price));
+  const linePrice = (l) => { const it = item(l.id); return it.price + l.mods.reduce((a, mid) => a + ((it.mods.find((x) => x.id === mid) || {}).price || 0), 0); };
+  const lineKey = (l) => { const it = item(l.id); return kindOf(it) + (l.mods.some((mid) => /ranch/i.test((it.mods.find((x) => x.id === mid) || {}).name || "")) ? "+ranch" : ""); };
+  const lineLabel = (l) => { const it = item(l.id); const ms = l.mods.map((mid) => (it.mods.find((x) => x.id === mid) || {}).name).filter(Boolean); return it.name + (ms.length ? ` (${ms.join(", ")})` : ""); };
+  const taxOf = (cents) => Math.round((cents * S.set.tax) / 100);
+  function cartTotals() { const sub = S.cart.reduce((a, l) => a + linePrice(l), 0), tax = taxOf(sub); return { sub, tax, total: sub + tax }; }
+  const sameSet = (a, b) => a.length === b.length && [...a].sort().join() === [...b].sort().join();
+  function available(it) { // portions left after what's already in the cart
+    let left = Infinity;
+    it.recipe.forEach((g) => { const used = S.cart.reduce((a, l) => a + (item(l.id).recipe.includes(g) ? 1 : 0), 0); left = Math.min(left, S.inv[g] - used); });
+    return left;
+  }
+  const staff = (id) => S.staff.find((s) => s.id === id);
+  const isCashier = () => /cashier/i.test((staff(S.signedIn) || {}).role || "");
+  const cust = () => (S.open && S.ci < CUSTOMERS.length ? CUSTOMERS[S.ci] : null);
+  const rushDone = () => S.ci >= CUSTOMERS.length;
+  const allPayments = () => S.orders.flatMap((o) => o.payments.map((p) => Object.assign({ order: o }, p)));
+  function drawer() {
+    const float = 10000;
+    const cashSales = allPayments().filter((p) => p.method === "cash").reduce((a, p) => a + p.amount, 0);
+    const cashRefunds = S.orders.flatMap((o) => o.refunds).filter((r) => r.method === "cash").reduce((a, r) => a + r.amount, 0);
+    const paidOut = S.paidOuts.reduce((a, p) => a + p.amount, 0);
+    const expected = float + cashSales - cashRefunds - paidOut;
+    const physical = float + cashSales - cashRefunds - (S.flags.iceTaken ? 500 : 0);
+    return { float, cashSales, cashRefunds, paidOut, expected, physical };
+  }
+
+  function deposit() { // card money the processor will send Gina's bank
+    const cards = allPayments().filter((p) => p.method !== "cash" && p.status === "approved");
+    const sales = cards.reduce((a, p) => a + p.amount + (p.tip || 0), 0);
+    const fees = cards.reduce((a, p) => a + Math.round((p.amount + (p.tip || 0)) * 0.026) + 15, 0);
+    const cardRefunds = S.orders.flatMap((o) => o.refunds).filter((r) => r.method !== "cash").reduce((a, r) => a + r.amount, 0);
+    return { n: cards.length, sales, fees, cardRefunds, net: sales - fees - cardRefunds };
+  }
+  // ---------- Missions ----------
+  function setupReady() { const m = missions(); return m[0].ok && m[1].ok && m[2].ok && m[3].ok; }
+  function missions() {
+    const cu = findKind("curds", 700), br = findKind("brat", 650), co = findKind("combo", 1250);
+    const jake = S.staff.find((s) => /jake/i.test(s.name));
+    const o1 = S.orders.find((o) => o.cust === 1);
+    const d = drawer();
+    const low = ING.filter((g) => S.inv[g.id] <= S.rop[g.id]);
+    return [
+      { t: "Add the food from Gina's chalkboard with the right prices", d: "Cheese Curds $7.00, Brat $6.50, and Curds & Brat Combo $12.50. Drinks and chips are already on the menu.", ok: !!(cu && br && co) },
+      { t: "Add a Ranch dip add-on (+$0.75) to Cheese Curds", d: "Add-ons are called modifiers. They change the price and tell the cook what to make.", ok: !!(cu && cu.mods.some((m) => /ranch/i.test(m.name) && m.price === 75)) },
+      { t: "Link each food item to its ingredients", d: "Curds use curds. A brat uses a brat and a bun. The combo uses all three. Then every sale counts down inventory.", ok: !!(cu && br && co && sameSet(cu.recipe, ["curds"]) && sameSet(br.recipe, ["brat", "bun"]) && sameSet(co.recipe, ["curds", "brat", "bun"])) },
+      { t: "Set sales tax to 5.5%", d: "Gina's accountant says to charge 5.5% (5% state plus 0.5% county) on everything she sells.", ok: S.set.tax === 5.5 },
+      { t: "Add Jake as a Cashier with his own 4-digit PIN, and sign the register in as Jake", d: "Every person gets their own login so the reports show who did what. Cashiers can't approve refunds.", ok: !!(jake && /cashier/i.test(jake.role) && /^\d{4}$/.test(jake.pin) && jake.pin !== DANA_PIN && S.flags.jakeSignedIn) },
+      { t: "Allow offline card payments, with a limit of $50 or less per sale", d: "If the hotspot drops, the reader can store card payments and send them later. The limit caps the risk.", ok: S.set.offline === "On" && S.set.offLimit > 0 && S.set.offLimit <= 5000 },
+      { t: "Serve every customer in the lunch rush", d: "Ring up exactly what each customer asks for and take payment the way they want to pay.", ok: CUSTOMERS.filter((c) => !c.refund).every((c) => S.orders.some((o) => o.cust === c.n)) },
+      { t: "Save the sale when a card is declined", d: "A declined card doesn't mean a lost customer. Ask for another way to pay.", ok: !!S.flags.declineSaved },
+      { t: "Reconnect after the outage so stored card payments upload", d: "Stored payments haven't been approved yet. Get back online and check what happened to each one.", ok: S.online && S.ci >= 8 && !allPayments().some((p) => p.status === "stored") },
+      { t: "Refund Customer 1's cold curds with a manager's approval", d: "With Jake signed in, a refund needs Gina's manager PIN. Refund only the curds, back to the way they paid.", ok: !!(o1 && o1.refunds.some((r) => r.key.startsWith("curds") && r.approvedBy === "Manager PIN")) },
+      { t: "Record the $5 Jake took from the drawer for ice", d: "Cash that leaves the drawer for a business expense is a paid out. If it isn't recorded, the drawer comes up short.", ok: S.paidOuts.some((p) => p.amount === 500) },
+      { t: "Count the cash drawer at close: $0.00 over or short", d: "Count what's actually in the drawer. The POS compares it to what should be there.", ok: rushDone() && S.counted === d.physical && d.expected === d.physical },
+      { t: "Order restock for every ingredient at or below its reorder point", d: "Bring each low item up to its par level for tomorrow's market.", ok: rushDone() && low.length > 0 && low.every((g) => S.inv[g.id] + (S.onOrder[g.id] || 0) >= g.par) },
+    ];
+  }
+
+  // ---------- Views ----------
+  const NAV = [["home", "Overview"], ["setup", "Setup"], ["register", "Register"], ["orders", "Orders"], ["drawer", "Cash drawer"], ["inventory", "Inventory"], ["reports", "Sales reports"], ["missions", "Checklist"], ["log", "Activity log"], ["report", "Submit report"]];
+  function renderNav() {
+    const ms = missions(), done = ms.filter((m) => m.ok).length;
+    const lowN = ING.filter((g) => S.inv[g.id] <= S.rop[g.id]).length;
+    const counts = { orders: S.orders.length, inventory: lowN ? `${lowN} low` : null, missions: `${done}/${ms.length}`, register: S.open && !rushDone() ? `#${S.ci + 1}` : null };
+    $("#nav").innerHTML = NAV.map(([v, l]) => `<button data-view="${v}" ${S.view === v ? 'aria-current="page"' : ""}><span>${l}</span>${counts[v] != null ? `<span class="count">${counts[v]}</span>` : ""}</button>`).join("");
+    const st = staff(S.signedIn);
+    $("#whoCtx").innerHTML = `Signed in <b>${esc(st.name.split(" ")[0])}</b> <span class="hint">(${esc(st.role)})</span>`;
+    $("#netCtx").innerHTML = S.online ? '<span class="dot"></span><span>Hotspot online</span>' : `<span class="dot off"></span><b style="color:var(--bad)">Offline</b> <button class="btn small" id="reconnect" ${S.ci >= 8 ? "" : "disabled"}>${S.ci >= 8 ? "Reconnect hotspot" : "No signal yet"}</button>`;
+    $("#lic").innerHTML = `Checklist ${done} of ${ms.length}<span class="meter"><i style="width:${Math.round((done / ms.length) * 100)}%"></i></span>`;
+  }
+  const chalk = () => `<div class="chalk"><b>BIG LAKE CURDS &amp; BRATS</b><span>Cheese Curds ........ $7.00</span><span>&nbsp;&nbsp;+ Ranch dip ....... $0.75</span><span>Brat on a Bun ....... $6.50</span><span>Curds &amp; Brat Combo .. $12.50</span><span>Water $2 · Root Beer $3 · Chips $2</span></div>`;
+
+  function vHome() {
+    const ms = missions(), done = ms.filter((m) => m.ok).length;
+    return `<div><h1>Overview</h1><p class="sub">You're helping Gina move her food truck from a cash box to a tablet point-of-sale (POS) system. Set it up, run a lunch rush at the farmers market, then close out the day and read the reports.</p></div>
+      <div class="ticket"><b>Message from Gina Kowalski, owner</b>
+        <span>"Last summer I was cash only. The line got so long people walked away, I never knew what was selling, and I ran out of curds by one o'clock every Saturday. My cash box was off almost every night. I bought a tablet, a card reader and a little receipt printer. Can you set it up and run the register with Jake for the lunch rush? The dairy shorted me this week, so I only have 8 portions of curds. My manager PIN is 2580 if you need it for a refund. (I know, I know. Never share a PIN in real life.)"</span></div>
+      <div class="grid2" style="grid-template-columns:minmax(0,320px) minmax(0,1fr)">${chalk()}
+      <div class="panel"><h2>How the day works</h2><p class="hint"><b>1. Setup:</b> menu, add-ons, ingredients, tax, staff and offline payments. <b>2. Register:</b> open the truck and serve ten customers in order. Things will go wrong on purpose. <b>3. Close:</b> record cash that left the drawer, count the drawer, order restock and read the sales reports. Then copy your report from Submit report.</p>
+      <div class="tiles"><div class="tile"><span class="n">${S.orders.length}</span><span class="l">Orders</span></div><div class="tile"><span class="n">${fmt(S.orders.reduce((a, o) => a + o.total, 0))}</span><span class="l">Sales with tax</span></div><div class="tile"><span class="n">${done}/${ms.length}</span><span class="l">Checklist</span></div></div></div></div>
+      <div class="panel"><h2>Recent activity</h2>${logHTML(6)}</div>`;
+  }
+
+  function vSetup() {
+    const tabs = [["menu", "Menu and ingredients"], ["tax", "Tax, tips and receipts"], ["staff", "Staff"], ["offline", "Offline and devices"]];
+    let body = "";
+    if (S.setTab === "menu") {
+      body = `<div class="grid2" style="grid-template-columns:minmax(0,320px) minmax(0,1fr)">${chalk()}
+        <div class="panel"><h2>Add a menu item</h2><div class="row"><label for="niName">Name</label><input type="text" id="niName" placeholder="Cheese Curds"><label for="niPrice">Price</label><input type="text" id="niPrice" placeholder="7.00" style="width:90px"><button class="btn primary" id="addItem">Add item</button></div>
+        <p class="hint">After adding an item, link its ingredients and add any add-ons below.</p></div></div>
+        ${S.menu.map((it) => `<div class="panel"><div class="row" style="justify-content:space-between"><h2>${esc(it.name)}</h2>${it.pack ? `<span class="hint mono">UPC ${it.upc}</span>` : `<button class="btn small danger" data-delitem="${it.id}">Delete</button>`}</div>
+          <div class="row"><label for="pr-${it.id}">Price</label><input type="text" id="pr-${it.id}" data-price="${it.id}" value="${(it.price / 100).toFixed(2)}" style="width:90px"></div>
+          ${it.pack ? `<p class="hint">Packaged item. Each sale uses one: ${esc(ingName(it.recipe[0]))}. Scan its barcode at the register.</p>` : `
+          <div class="recipe"><b style="font-size:14px">Uses one of each:</b> ${["curds", "brat", "bun"].map((g) => `<label><input type="checkbox" data-recipe="${it.id}:${g}" ${it.recipe.includes(g) ? "checked" : ""}>${esc(ingName(g))}</label>`).join("")}</div>
+          <div><b style="font-size:14px">Add-ons (modifiers)</b> ${it.mods.map((m) => `<span class="pill mute">${esc(m.name)} +${fmt(m.price)} <button class="btn small" style="padding:0 4px;border:none;background:none" data-delmod="${it.id}:${m.id}" aria-label="Remove ${esc(m.name)}">×</button></span>`).join(" ") || '<span class="hint">None</span>'}</div>
+          <div class="row"><label for="mn-${it.id}">Add-on</label><input type="text" id="mn-${it.id}" placeholder="Ranch dip"><label for="mp-${it.id}">+ Price</label><input type="text" id="mp-${it.id}" placeholder="0.75" style="width:80px"><button class="btn small" data-addmod="${it.id}">Add</button></div>`}</div>`).join("")}`;
+    } else if (S.setTab === "tax") {
+      const sel = (id, opts, v) => `<select id="${id}">${opts.map((o) => `<option ${o === v ? "selected" : ""}>${o}</option>`).join("")}</select>`;
+      body = `<div class="panel">
+        <div class="policy"><div><b>Sales tax rate (%)</b><p class="help">Applied to every item. The POS adds it to each sale and totals it in the reports so Gina can file her sales tax return.</p></div><div class="row"><input type="number" id="taxRate" step="0.1" min="0" value="${S.set.tax}"><button class="btn primary" id="saveTax">Save</button></div></div>
+        <div class="policy"><div><b>Tip prompt on card payments</b><p class="help">Shows 15%, 18% and 20% buttons on the reader. Tips are figured on the price before tax.</p></div>${sel("tips", ["Off", "On: 15%, 18%, 20%"], S.set.tips)}</div>
+        <div class="policy"><div><b>Receipts</b><p class="help">Paper receipts cost money and paper. Text and email receipts collect a phone number or email address.</p></div>${sel("receipts", ["Print every receipt", "Ask the customer", "Text or email only"], S.set.receipts)}</div>
+        <div class="policy"><div><b>Receipt contacts</b><p class="help">What happens to the phone numbers and emails customers give for receipts?</p></div>${sel("marketing", ["Never use receipt contacts for marketing", "Ask customers to opt in to deals", "Add everyone to the marketing list"], S.set.marketing)}</div></div>`;
+    } else if (S.setTab === "staff") {
+      body = `<div class="panel"><h2>Team</h2><div class="tablewrap"><table><thead><tr><th>Name</th><th>Role</th><th>PIN</th><th>Can approve refunds</th></tr></thead><tbody>${S.staff.map((s) => `<tr><td>${esc(s.name)}${s.id === S.signedIn ? ' <span class="pill good">Signed in</span>' : ""}</td><td>${esc(s.role)}</td><td class="mono">••••</td><td>${/cashier/i.test(s.role) ? "No" : "Yes"}</td></tr>`).join("")}</tbody></table></div></div>
+        <div class="panel"><h2>Add a team member</h2><div class="row"><label for="stName">Name</label><input type="text" id="stName" placeholder="Jake Brenner"><label for="stRole">Role</label><select id="stRole"><option>Cashier</option><option>Manager</option></select><label for="stPin">PIN</label><input type="password" id="stPin" inputmode="numeric" maxlength="4" placeholder="4 digits"><button class="btn primary" id="addStaff">Add</button></div>
+        <p class="hint">Shared logins hide who rang up a sale or opened the drawer. Give everyone their own PIN and don't share them.</p></div>
+        <div class="panel"><h2>Switch who is signed in</h2><div class="row"><label for="swWho">Person</label><select id="swWho">${S.staff.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select><label for="swPin">PIN</label><input type="password" id="swPin" inputmode="numeric" maxlength="4"><button class="btn primary" id="swGo">Sign in</button></div></div>`;
+    } else {
+      body = `<div class="panel">
+        <div class="policy"><div><b>Offline card payments</b><p class="help">When the internet drops, the reader can store card payments and send them when it reconnects. A stored payment isn't approved yet. If the card turns out to be declined later, the business loses the money.</p></div><select id="offEnabled">${["Off", "On"].map((o) => `<option ${o === S.set.offline ? "selected" : ""}>${o}</option>`).join("")}</select></div>
+        <div class="policy"><div><b>Offline limit per sale ($)</b><p class="help">Payments over this amount are refused while offline. Lower limits mean less risk.</p></div><div class="row"><input type="number" id="offLimit" min="0" step="1" value="${S.set.offLimit / 100}"><button class="btn primary" id="saveOff">Save</button></div></div></div>
+        <div class="panel"><h2>Devices</h2><div class="tablewrap"><table><thead><tr><th>Device</th><th>Connection</th><th>Status</th></tr></thead><tbody>
+        <tr><td>Tablet (POS app)</td><td>Wi-Fi to the truck's cellular hotspot</td><td>${S.online ? '<span class="pill good">Online</span>' : '<span class="pill bad">Offline</span>'}</td></tr>
+        <tr><td>Card reader (chip, tap, phone wallets)</td><td>Bluetooth to the tablet</td><td><span class="pill good">Paired · battery 82%</span></td></tr>
+        <tr><td>Receipt printer (belt-clip thermal)</td><td>Bluetooth to the tablet</td><td><span class="pill good">Paired · paper OK</span></td></tr>
+        <tr><td>Barcode scanner (open lab)</td><td>USB or Bluetooth, types like a keyboard</td><td><span class="pill mute">Use the Scan box on the Register</span></td></tr>
+        <tr><td>Cash drawer</td><td>Opens when a cash sale finishes</td><td><span class="pill good">Ready</span></td></tr></tbody></table></div></div>`;
+    }
+    return `<div><h1>Setup</h1><p class="sub">Everything the register needs before the first customer. In a real POS this lives in the cloud back office, so Gina can change prices from home and every device gets the update.</p></div>
+      <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${S.setTab === k}">${l}</button>`).join("")}</div>${body}`;
+  }
+
+  function custCard(c) {
+    if (!c) return "";
+    return `<div class="cust"><div class="who"><b>Customer ${c.n} of ${CUSTOMERS.length}</b><span>${c.time}</span></div><q>${esc(c.say)}</q>${c.note ? `<span class="hint">${esc(c.note)}</span>` : ""}${c.refund ? '<span class="hint">Go to <b>Orders</b> to refund it.</span>' : `<span class="hint">${esc(c.payText || (c.hands ? `Will pay cash with ${fmt(c.hands)}.` : ""))}</span>`}</div>`;
+  }
+  function vRegister() {
+    const c = cust();
+    if (!S.open) return `<div><h1>Register</h1><p class="sub">The market opens at 11:00. Finish setup, then open the truck.</p></div>
+      <div class="panel"><p>${setupReady() ? "Setup looks ready." : "Gina won't open until the first four checklist items are done: food items, the Ranch add-on, ingredients linked and the tax rate."}</p><div class="row"><button class="btn primary" id="openTruck" ${setupReady() ? "" : "disabled"}>Open the truck</button></div></div>`;
+    if (rushDone()) return `<div><h1>Register</h1><p class="sub">The lunch rush is over. Close out: record paid outs and count the <b>Cash drawer</b>, order restock in <b>Inventory</b> and look at the <b>Sales reports</b>.</p></div>`;
+    const t = cartTotals();
+    let side;
+    if (c.refund) side = custCard(c) + (S.online ? "" : '<div class="notice bad">You can\'t look up an old card or cash order to refund while the POS is offline. Reconnect the hotspot first.</div>');
+    else if (!c.refund && !S.online && S.ci >= 8) side = custCard(c) + '<div class="notice info">The signal is back. Reconnect the hotspot (top of the screen) so your stored card payments can upload.</div>';
+    else {
+      side = custCard(c) + `<div class="panel"><h2>Current order</h2><div class="cart">${S.cart.map((l, i) => `<div class="cartline"><span>${esc(lineLabel(l))}</span><span class="num">${fmt(linePrice(l))}</span><button class="btn small" data-rmline="${i}" aria-label="Remove">×</button></div>`).join("") || '<span class="hint">Tap items to add them.</span>'}</div>
+        <div class="totals"><span>Subtotal</span><span>${fmt(t.sub)}</span><span>Tax (${S.set.tax}%)</span><span>${fmt(t.tax)}</span><span class="grand">Total</span><span class="grand">${fmt(t.total)}</span></div>
+        ${pay ? payPanel() : `<div class="row"><button class="btn primary" id="charge" ${S.cart.length ? "" : "disabled"}>Charge ${fmt(t.total)}</button><button class="btn" id="clearCart" ${S.cart.length ? "" : "disabled"}>Clear</button></div>`}
+        <div id="regOut"></div></div>`;
+    }
+    return `<div><h1>Register</h1><p class="sub">Serve the customer on the right. Ring up exactly what they ask for, then take payment the way they want to pay.</p></div>
+      <div class="regwrap"><div class="stepper">
+        <div class="row"><label for="scan">Scan</label><input type="text" id="scan" placeholder="Scan or type a barcode, then Enter" autocomplete="off" style="flex:1"></div>
+        <div class="items">${S.menu.map((it) => { const left = available(it); const out = S.inv && it.recipe.length && left <= 0; return `<button class="item ${it.pack ? "pack" : "food"}" data-add="${it.id}" ${out || c.refund ? "disabled" : ""}><b>${esc(it.name)}</b><span>${fmt(it.price)}</span>${out ? '<span class="sold">86\'d · sold out</span>' : left <= 3 ? `<span style="color:var(--warn)">${left} left</span>` : ""}</button>`; }).join("")}</div>
+        ${modPicker ? modPicker : ""}
+      </div><div class="stepper">${side}</div></div>`;
+  }
+  let modPicker = "";
+  function payPanel() {
+    const c = cust(), part = pay.parts ? `Payment ${pay.idx + 1} of ${pay.parts.length}: ${fmt(pay.parts[pay.idx])}` : `Amount due: ${fmt(pay.total)}`;
+    if (pay.cash) return `<div class="stepper"><b>${part}</b><label for="tendered">Cash received</label><input type="text" id="tendered" placeholder="${c.hands ? (c.hands / 100).toFixed(2) : ""}"><div class="row"><button class="btn primary" id="cashGo">Finish cash sale</button><button class="btn" id="payBack">Back</button></div></div>`;
+    return `<div class="stepper"><b>${part}</b>${pay.declined ? '<div class="notice bad">Card declined: insufficient funds. Ask the customer for another way to pay.</div>' : ""}
+      <div class="paygrid">${Object.entries(METHOD).map(([k, l]) => `<button class="btn" data-paym="${k}">${l}</button>`).join("")}${pay.parts ? "" : '<button class="btn" data-paym="split">Split evenly (2)</button>'}</div><button class="btn small" id="payBack">Cancel payment</button></div>`;
+  }
+
+  function vOrders() {
+    const c = cust(), refunding = c && c.refund;
+    return `<div><h1>Orders</h1><p class="sub">Every sale, with how it was paid. Refunds start here. ${refunding ? "<b>Customer 9 is waiting for a refund.</b>" : ""}</p></div>
+      ${refunding ? custCard(c) : ""}
+      ${S.orders.length ? `<div class="tablewrap"><table><thead><tr><th>#</th><th>Time</th><th>Items</th><th>Total</th><th>Payment</th><th>Rung up by</th></tr></thead><tbody>
+      ${S.orders.map((o, oi) => `<tr><td>${o.n}<br><span class="hint">Cust. ${o.cust}</span></td><td>${o.time}</td><td>${o.lines.map((l, li) => { const r = o.refunds.find((x) => x.line === li); return `<div class="row" style="gap:6px">${esc(l.label)} <span class="hint">${fmt(l.price)}</span>${r ? ` <span class="pill warn">Refunded ${fmt(r.amount)}</span>` : refunding ? ` <button class="btn small" data-refund="${oi}:${li}">Refund</button>` : ""}</div>`; }).join("")}</td><td class="num">${fmt(o.total)}${o.tip ? `<br><span class="hint">+ ${fmt(o.tip)} tip</span>` : ""}</td><td>${o.payments.map((p) => `${METHOD[p.method]} ${fmt(p.amount + (p.tip || 0))} ${p.status === "stored" ? '<span class="pill warn">Stored offline</span>' : p.status === "declined-later" ? '<span class="pill bad">Declined after upload</span>' : ""}`).join("<br>")}${o.declined ? '<br><span class="hint">1 card declined first</span>' : ""}</td><td>${esc(o.by)}</td></tr>`).join("")}
+      </tbody></table></div>` : '<p class="hint">No orders yet.</p>'}`;
+  }
+
+  function vDrawer() {
+    const d = drawer();
+    let count = "";
+    if (rushDone()) {
+      let left = d.physical; const den = [[2000, "$20 bills"], [1000, "$10 bills"], [500, "$5 bills"], [100, "$1 bills"], [25, "Quarters"], [10, "Dimes"], [5, "Nickels"], [1, "Pennies"]].map(([v, l]) => { const n = Math.floor(left / v); left -= n * v; return [v, l, n]; });
+      const os = S.counted == null ? null : S.counted - d.expected;
+      count = `<div class="panel"><h2>Count the drawer</h2><p class="hint">This is what's physically in the drawer. Add it up and enter the total.</p>
+        <div class="denoms">${den.map(([v, l, n]) => `<div class="denom"><b>${n}</b><span class="hint">${l}</span></div>`).join("")}</div>
+        <div class="row"><label for="countAmt">Counted total</label><input type="text" id="countAmt" placeholder="0.00" value="${S.counted == null ? "" : (S.counted / 100).toFixed(2)}" style="width:110px"><button class="btn primary" id="countGo">Save count</button></div>
+        ${os == null ? "" : S.counted !== d.physical ? '<div class="notice bad">That doesn\'t match the bills and coins shown. Recount.</div>' : os === 0 ? '<div class="notice good">Balanced: $0.00 over or short.</div>' : `<div class="notice bad">${os < 0 ? "Short" : "Over"} by ${fmt(Math.abs(os))}. Something that happened to the cash wasn't recorded.</div>`}</div>`;
+    } else count = '<div class="panel"><p class="hint">Count the drawer when the lunch rush is over.</p></div>';
+    return `<div><h1>Cash drawer</h1><p class="sub">The POS tracks what <b>should</b> be in the drawer. At close you count what <b>is</b> there. The difference is called over or short.</p></div>
+      <div class="panel"><div class="tablewrap"><table><tbody>
+        <tr><td>Starting cash (float)</td><td class="num">${fmt(d.float)}</td></tr>
+        <tr><td>+ Cash sales</td><td class="num">${fmt(d.cashSales)}</td></tr>
+        <tr><td>− Cash refunds</td><td class="num">${fmt(d.cashRefunds)}</td></tr>
+        <tr><td>− Paid outs</td><td class="num">${fmt(d.paidOut)}</td></tr>
+        <tr><td><b>Expected in drawer</b></td><td class="num"><b>${fmt(d.expected)}</b></td></tr></tbody></table></div></div>
+      <div class="panel"><h2>Paid out</h2><p class="hint">Record cash taken out of the drawer for a business expense.</p>
+        <div class="row"><label for="poAmt">Amount</label><input type="text" id="poAmt" placeholder="5.00" style="width:90px"><label for="poWhy">Reason</label><input type="text" id="poWhy" placeholder="Ice from the gas station"><button class="btn primary" id="poGo">Record paid out</button></div>
+        ${S.paidOuts.map((p) => `<div class="hint">${fmt(p.amount)} · ${esc(p.why)} · by ${esc(p.by)}</div>`).join("")}</div>${count}`;
+  }
+
+  function vInventory() {
+    return `<div><h1>Inventory</h1><p class="sub">Each sale subtracts ingredients. When something hits its <b>reorder point</b>, it's time to buy more. Order enough to bring it back up to <b>par</b>, the amount Gina wants on hand for a market day.</p></div>
+      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>On hand</th><th>Reorder point</th><th>Par</th><th>On order</th><th>Status</th><th>Order qty</th></tr></thead><tbody>
+      ${ING.map((g) => { const on = S.inv[g.id], low = on <= S.rop[g.id], oo = S.onOrder[g.id] || 0; return `<tr><td>${esc(g.name)}</td><td class="num">${on}</td><td><input type="number" min="0" data-rop="${g.id}" value="${S.rop[g.id]}" style="width:70px" aria-label="Reorder point for ${esc(g.name)}"></td><td class="num">${g.par}</td><td class="num">${oo}</td><td>${on <= 0 ? '<span class="pill bad">Out (86)</span>' : low ? '<span class="pill warn">Low</span>' : '<span class="pill good">OK</span>'}</td><td><input type="number" min="0" id="ord-${g.id}" placeholder="${low ? Math.max(0, g.par - on - oo) : 0}" style="width:80px" aria-label="Order quantity for ${esc(g.name)}"></td></tr>`; }).join("")}
+      </tbody></table></div>
+      <div class="row"><button class="btn primary" id="placeOrder">Place restock order</button><span class="hint">The gray number in each box is the suggested amount.</span></div>`;
+  }
+
+  function vReports() {
+    if (!S.orders.length) return `<div><h1>Sales reports</h1><p class="sub">Reports fill in as you ring up sales.</p></div>`;
+    const lines = S.orders.flatMap((o) => o.lines.map((l, i) => Object.assign({ refunded: o.refunds.some((r) => r.line === i) }, l)));
+    const byItem = {}; lines.forEach((l) => { const k = l.name; byItem[k] = byItem[k] || { q: 0, s: 0 }; byItem[k].q++; byItem[k].s += l.price; });
+    const byHour = {}; S.orders.forEach((o) => { const h = o.time.slice(0, 2) + ":00"; byHour[h] = (byHour[h] || 0) + o.sub; });
+    const pays = {}; allPayments().forEach((p) => { const k = METHOD[p.method]; pays[k] = (pays[k] || 0) + p.amount; });
+    const gross = S.orders.reduce((a, o) => a + o.sub, 0), tax = S.orders.reduce((a, o) => a + o.tax, 0), tips = S.orders.reduce((a, o) => a + o.tip, 0);
+    const refunds = S.orders.flatMap((o) => o.refunds).reduce((a, r) => a + r.amount, 0);
+    const lost = allPayments().filter((p) => p.status === "declined-later").reduce((a, p) => a + p.amount + (p.tip || 0), 0);
+    const maxI = Math.max(...Object.values(byItem).map((x) => x.s)), maxH = Math.max(...Object.values(byHour));
+    const bar = (l, v, m, right) => `<div class="bar"><span>${esc(l)}</span><i style="width:${Math.round((v / m) * 100)}%"></i><span class="num">${right}</span></div>`;
+    return `<div><h1>Sales reports</h1><p class="sub">The data Gina never had when she was cash only. Use these numbers in your Solve It recommendation.</p></div>
+      <div class="tiles"><div class="tile"><span class="n">${fmt(gross)}</span><span class="l">Sales before tax</span></div><div class="tile"><span class="n">${fmt(tax)}</span><span class="l">Sales tax collected (owed to the state)</span></div><div class="tile"><span class="n">${fmt(tips)}</span><span class="l">Tips</span></div><div class="tile"><span class="n">${fmt(refunds)}</span><span class="l">Refunds</span></div><div class="tile"><span class="n">${fmt(lost)}</span><span class="l">Lost: offline payments declined</span></div><div class="tile"><span class="n">${S.orders.length ? fmt(Math.round(gross / S.orders.length)) : "-"}</span><span class="l">Average order before tax</span></div></div>
+      <div class="panel"><h2>Card deposit</h2>${(() => { const dp = deposit(); return `<div class="tablewrap"><table><tbody><tr><td>Approved card payments (${dp.n}), including tips</td><td class="num">${fmt(dp.sales)}</td></tr><tr><td>− Processing fees (example rate: 2.6% + 15¢ per in-person payment)</td><td class="num">${fmt(dp.fees)}</td></tr><tr><td>− Refunds to cards</td><td class="num">${fmt(dp.cardRefunds)}</td></tr><tr><td><b>Expected deposit</b> <span class="hint">(usually arrives in 1 to 2 business days)</span></td><td class="num"><b>${fmt(dp.net)}</b></td></tr></tbody></table></div><p class="hint">Offline payments that were declined after upload never get deposited. Fee rates vary by provider and plan.</p>`; })()}</div>
+      <div class="panel"><h2>Sales by item</h2><div class="bars">${Object.entries(byItem).sort((a, b) => b[1].s - a[1].s).map(([k, v]) => bar(k, v.s, maxI, `${v.q} · ${fmt(v.s)}`)).join("")}</div></div>
+      <div class="panel"><h2>Sales by hour</h2><div class="bars">${Object.entries(byHour).sort().map(([k, v]) => bar(k, v, maxH, fmt(v))).join("")}</div></div>
+      <div class="panel"><h2>Payments by type</h2><div class="tablewrap"><table><thead><tr><th>Type</th><th class="num">Amount (before tips)</th></tr></thead><tbody>${Object.entries(pays).map(([k, v]) => `<tr><td>${k}</td><td class="num">${fmt(v)}</td></tr>`).join("")}</tbody></table></div></div>`;
+  }
+
+  function vMissions() {
+    const ms = missions();
+    return `<div><h1>Gina's checklist</h1><p class="sub">Each item checks itself as soon as it's done.</p></div>
+      <div class="panel">${ms.map((m, i) => `<div class="mission"><span class="check ${m.ok ? "done" : "todo"}" aria-label="${m.ok ? "Done" : "Not done"}">${m.ok ? "✓" : i + 1}</span><div><b>${m.t}</b><p class="hint">${m.d}</p></div></div>`).join("")}</div>`;
+  }
+  function logHTML(n) { return `<div class="log">${S.log.slice(0, n).map((l) => `<div><time>${l.t}</time><span>${esc(l.m)}</span></div>`).join("")}</div>`; }
+  function vLog() { return `<div><h1>Activity log</h1><p class="sub">Every change and sale, newest first, with who did it. POS systems keep this so the owner can trace drawer problems and refunds.</p></div><div class="panel">${logHTML(300)}</div>`; }
+
+  function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).toUpperCase().padStart(7, "0"); }
+  function reportText() {
+    const ms = missions(), d = drawer();
+    const gross = S.orders.reduce((a, o) => a + o.sub, 0), tax = S.orders.reduce((a, o) => a + o.tax, 0), tips = S.orders.reduce((a, o) => a + o.tip, 0);
+    const byItem = {}; S.orders.forEach((o) => o.lines.forEach((l) => { byItem[l.name] = byItem[l.name] || [0, 0]; byItem[l.name][0]++; byItem[l.name][1] += l.price; }));
+    const byHour = {}; S.orders.forEach((o) => { const h = o.time.slice(0, 2) + ":00"; byHour[h] = (byHour[h] || 0) + o.sub; });
+    const body = [
+      "Food Truck POS Simulator report (Big Lake Curds & Brats)",
+      `Student: ${S.student || "(name not entered)"}`,
+      `Generated: ${new Date().toLocaleString()}`,
+      `Checklist: ${ms.filter((m) => m.ok).length} of ${ms.length} complete`,
+      ...ms.map((m) => `  [${m.ok ? "x" : " "}] ${m.t}`),
+      "", "Menu:", ...S.menu.map((it) => `  ${it.name} ${fmt(it.price)} | uses: ${it.recipe.join(", ") || "(nothing linked)"}${it.mods.length ? " | add-ons: " + it.mods.map((m) => `${m.name} +${fmt(m.price)}`).join(", ") : ""}`),
+      `Settings: tax ${S.set.tax}%; tips ${S.set.tips}; receipts "${S.set.receipts}"; receipt contacts "${S.set.marketing}"; offline payments ${S.set.offline}, limit ${fmt(S.set.offLimit)}`,
+      `Staff: ${S.staff.map((s) => `${s.name} (${s.role})`).join("; ")}`,
+      "", `Sales: ${S.orders.length} orders; ${fmt(gross)} before tax; ${fmt(tax)} tax; ${fmt(tips)} tips`,
+      "Sales by item:", ...Object.entries(byItem).sort((a, b) => b[1][1] - a[1][1]).map(([k, v]) => `  ${k}: ${v[0]} sold, ${fmt(v[1])}`),
+      "Sales by hour:", ...Object.entries(byHour).sort().map(([k, v]) => `  ${k}: ${fmt(v)}`),
+      "Payments:", ...allPayments().map((p) => `  Order ${p.order.n}: ${METHOD[p.method]} ${fmt(p.amount)}${p.tip ? ` + ${fmt(p.tip)} tip` : ""}${p.status !== "approved" ? ` [${p.status}]` : ""}`),
+      "Refunds:", ...S.orders.flatMap((o) => o.refunds.map((r) => `  Order ${o.n}: ${r.label} ${fmt(r.amount)} to ${METHOD[r.method]} (${r.approvedBy})`)),
+      (() => { const dp = deposit(); return `Card deposit: ${fmt(dp.sales)} approved card payments - ${fmt(dp.fees)} fees (example 2.6% + 15c) - ${fmt(dp.cardRefunds)} card refunds = ${fmt(dp.net)}`; })(),
+      "", `Drawer: float ${fmt(d.float)}; cash sales ${fmt(d.cashSales)}; cash refunds ${fmt(d.cashRefunds)}; paid outs ${fmt(d.paidOut)}; expected ${fmt(d.expected)}; counted ${S.counted == null ? "(not counted)" : fmt(S.counted)}; over/short ${S.counted == null ? "-" : fmt(S.counted - d.expected)}`,
+      `Inventory: ${ING.map((g) => `${g.id} ${S.inv[g.id]} on hand${S.onOrder[g.id] ? ` + ${S.onOrder[g.id]} ordered` : ""}`).join("; ")}`,
+      "", `Changes logged: ${S.log.length}`,
+    ].join("\n");
+    return body + `\nVerification code: ${hash((S.student || "") + "|" + body.replace(/Generated: .*\n/, ""))}`;
+  }
+  function vReport() {
+    return `<div><h1>Submit report</h1><p class="sub">Enter your name, then copy this report into your Solve It submission. The verification code changes whenever your work or name changes, so your instructor can match the report to your recording.</p></div>
+      <div class="panel"><div class="row"><label for="stuName">Your name</label><input type="text" id="stuName" value="${esc(S.student)}" placeholder="First and last name"><button class="btn primary" id="saveName">Save name</button></div></div>
+      <div class="panel"><div class="row" style="justify-content:space-between"><h2>End-of-day report</h2><button class="btn" id="copyRep">Copy report</button></div>
+      <div class="tablewrap" style="border:none"><pre class="mono" id="repText" style="margin:0;white-space:pre-wrap;font-size:13px">${esc(reportText())}</pre></div></div>`;
+  }
+
+  function render() {
+    renderNav();
+    const v = { home: vHome, setup: vSetup, register: vRegister, orders: vOrders, drawer: vDrawer, inventory: vInventory, reports: vReports, missions: vMissions, log: vLog, report: vReport }[S.view] || vHome;
+    $("#work").innerHTML = v();
+    save();
+  }
+  function regOut(html) { const o = $("#regOut"); if (o) o.innerHTML = html; }
+  function dialog(html) { $("#layer").innerHTML = `<div class="overlay"><div class="dialog" role="dialog" aria-modal="true">${html}</div></div>`; const f = $("#layer .dialog").querySelector("input, select, button"); if (f) f.focus(); }
+  const closeDialog = () => { $("#layer").innerHTML = ""; };
+
+  // ---------- Register logic ----------
+  function addToCart(id, mods) {
+    const it = item(id), c = cust();
+    if (!c || c.refund || pay) return;
+    if (available(it) <= 0) { toast(`${it.name} is sold out (86'd).`); return; }
+    S.cart.push({ id, mods: mods || [] }); modPicker = ""; render();
+  }
+  function startAdd(id) {
+    const it = item(id);
+    if (!it.mods.length) return addToCart(id);
+    modPicker = `<div class="panel"><h2>${esc(it.name)}: add-ons</h2>${it.mods.map((m) => `<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" class="modchk" value="${m.id}">${esc(m.name)} +${fmt(m.price)}</label>`).join("")}<div class="row"><button class="btn primary" data-addwith="${id}">Add to order</button><button class="btn" id="modCancel">Cancel</button></div></div>`;
+    render();
+  }
+  function wantedNow(c) { if (c.alt) { const cu = findKind("curds"); return cu && available(cu) >= 2 ? [c.want, c.alt] : [c.alt]; } return [c.want]; }
+  function charge() {
+    const c = cust(), keys = S.cart.map(lineKey);
+    if (!wantedNow(c).some((w) => sameSet(w, keys))) {
+      const fix = c.alt && sameSet(c.want, keys) ? "We're out of curds, so this customer wants the brats instead." : `Customer ${c.n}: "Hang on, that's not what I ordered." Check the order against what they said.`;
+      regOut(`<div class="notice bad">${fix}</div>`); log(`Order for Customer ${c.n} didn't match what they asked for.`); save(); return;
+    }
+    pay = { total: cartTotals().total, payments: [] }; render();
+  }
+  function expectedMethod(c) { return pay.declined && c.then ? c.then : c.pay; }
+  function choose(m) {
+    const c = cust(), exp = expectedMethod(c);
+    if (m === "split") { if (!c.split) return regOut(`<div class="notice bad">Customer ${c.n}: "Just one payment, thanks."</div>`); const a = Math.floor(pay.total / 2); pay.parts = [a, pay.total - a]; pay.idx = 0; render(); return; }
+    if (c.split && !pay.parts) return regOut(`<div class="notice bad">Customer ${c.n}: "We're splitting it evenly, two payments."</div>`);
+    if (m !== exp) return regOut(`<div class="notice bad">Customer ${c.n}: "I'd rather pay with ${exp === "cash" ? "cash" : METHOD[exp].toLowerCase()}."</div>`);
+    if (m === "cash") { pay.cash = true; render(); return; }
+    const amount = pay.parts ? pay.parts[pay.idx] : pay.total;
+    if (c.decline && !pay.declined) { pay.declined = true; log(`Card declined for Customer ${c.n} (insufficient funds).`); render(); return; }
+    let status = "approved";
+    if (!S.online) {
+      if (S.set.offline !== "On") { log(`Card payment refused while offline: offline payments are turned off.`); return regOut('<div class="notice bad">Card reader: no internet connection, and offline payments are turned off in Setup > Offline and devices. This customer has no cash.</div>'); }
+      if (amount > S.set.offLimit) { log(`Offline card payment of ${fmt(amount)} refused: over the ${fmt(S.set.offLimit)} offline limit.`); return regOut(`<div class="notice bad">Card reader: ${fmt(amount)} is over your offline limit of ${fmt(S.set.offLimit)}. This customer has no cash. Raise the limit in Setup if you accept the risk.</div>`); }
+      status = "stored";
+    }
+    const sub = cartTotals().sub;
+    const tip = !pay.parts && c.tip && S.set.tips !== "Off" ? Math.round((sub * c.tip) / 100) : 0;
+    pay.payments.push({ method: m, amount, tip, status });
+    if (pay.parts && pay.idx < pay.parts.length - 1) { pay.idx++; render(); regOut(`<div class="notice good">${status === "stored" ? "Stored offline" : "Approved"}. Now the second payment.</div>`); return; }
+    finish();
+  }
+  function cashGo() {
+    const c = cust(), due = pay.parts ? pay.parts[pay.idx] : pay.total, got = toCents($("#tendered").value);
+    if (!(got >= due)) return regOut(`<div class="notice bad">That's less than ${fmt(due)}.</div>`);
+    pay.payments.push({ method: "cash", amount: due, tip: 0, status: "approved", tendered: got, change: got - due });
+    finish(`Change due: <b>${fmt(got - due)}</b>. Count it back to the customer.`);
+  }
+  function finish(extra) {
+    const c = cust(), t = cartTotals(), by = staff(S.signedIn).name;
+    const o = { n: S.orders.length + 1, cust: c.n, time: c.time, by, sub: t.sub, tax: t.tax, total: t.total, tip: pay.payments.reduce((a, p) => a + p.tip, 0), declined: !!pay.declined,
+      lines: S.cart.map((l) => ({ name: item(l.id).name, label: lineLabel(l), key: lineKey(l), price: linePrice(l), recipe: item(l.id).recipe.slice() })), payments: pay.payments, refunds: [] };
+    S.orders.push(o);
+    o.lines.forEach((l) => l.recipe.forEach((g) => { S.inv[g] = Math.max(0, S.inv[g] - 1); }));
+    if (pay.declined) S.flags.declineSaved = true;
+    log(`Order ${o.n} for Customer ${c.n}: ${o.lines.map((l) => l.label).join(", ")}. ${fmt(o.total)} by ${o.payments.map((p) => METHOD[p.method] + (p.status === "stored" ? " (stored offline)" : "")).join(" + ")}. Rung up by ${by}.`);
+    const lows = ING.filter((g) => S.inv[g.id] <= S.rop[g.id] && o.lines.some((l) => l.recipe.includes(g.id)));
+    S.cart = []; pay = null; S.ci++;
+    let event = "";
+    if (c.n === 5) { S.flags.iceTaken = true; event = '<div class="ticket"><b>Jake</b><span>"Hey, we were almost out of ice, so I grabbed $5 from the drawer and ran to the gas station."</span></div>'; log("Jake took $5 from the cash drawer to buy ice."); }
+    if (c.n === 6) { S.online = false; event = '<div class="notice bad"><b>The hotspot just dropped.</b> The POS is offline. Card payments only work if offline payments are allowed.</div>'; log("Hotspot dropped. The POS is offline."); }
+    if (c.n === 8) log("The cellular signal is back. The hotspot can reconnect.");
+    render();
+    const rcpt = S.set.receipts === "Print every receipt" ? "Receipt printed." : S.set.receipts === "Text or email only" ? "Receipt sent by text." : "Customer asked for no receipt.";
+    regOut(`<div class="notice good">Sale complete. ${extra || ""} ${rcpt}${lows.length ? ` <b>Low stock:</b> ${lows.map((g) => `${g.name} (${S.inv[g.id]} left)`).join(", ")}.` : ""}</div>${event}`);
+  }
+  function doRefund(oi, li, approvedBy) {
+    const o = S.orders[oi], l = o.lines[li], amount = l.price + taxOf(l.price), method = o.payments[0].method;
+    o.refunds.push({ line: li, label: l.label, key: l.key, amount, method, approvedBy, by: staff(S.signedIn).name });
+    log(`Refunded ${l.label} from order ${o.n}: ${fmt(amount)} back to ${METHOD[method]}. Approved by ${approvedBy}. The cold curds were thrown out, so inventory isn't added back.`);
+    S.ci++; S.view = "orders"; closeDialog(); render(); toast(`Refunded ${fmt(amount)} in ${METHOD[method].toLowerCase()}.`);
+  }
+
+  // ---------- Events ----------
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button"); if (!t || t.disabled) return;
+    if (t.dataset.view) { S.view = t.dataset.view; modPicker = ""; render(); return; }
+    if (t.dataset.tab) { S.setTab = t.dataset.tab; render(); return; }
+    if (t.dataset.add) { startAdd(t.dataset.add); return; }
+    if (t.dataset.addwith) { addToCart(t.dataset.addwith, [...document.querySelectorAll(".modchk:checked")].map((x) => x.value)); return; }
+    if (t.dataset.rmline) { if (pay) return; S.cart.splice(+t.dataset.rmline, 1); render(); return; }
+    if (t.dataset.paym) { choose(t.dataset.paym); return; }
+    if (t.dataset.delitem) { const it = item(t.dataset.delitem); S.menu = S.menu.filter((m) => m !== it); log(`Deleted menu item "${it.name}".`); render(); return; }
+    if (t.dataset.addmod) {
+      const it = item(t.dataset.addmod), n = $(`#mn-${it.id}`).value.trim(), p = toCents($(`#mp-${it.id}`).value || "0");
+      if (!n) { toast("Name the add-on."); return; } if (!(p >= 0)) { toast("Enter a price like 0.75."); return; }
+      it.mods.push({ id: "x" + Date.now().toString(36) + it.mods.length, name: n, price: p }); log(`Added add-on "${n}" (+${fmt(p)}) to ${it.name}.`); render(); return; }
+    if (t.dataset.delmod) { const [iid, mid] = t.dataset.delmod.split(":"), it = item(iid); it.mods = it.mods.filter((m) => m.id !== mid); log(`Removed an add-on from ${it.name}.`); render(); return; }
+    if (t.dataset.refund) {
+      const [oi, li] = t.dataset.refund.split(":").map(Number), o = S.orders[oi], l = o.lines[li];
+      if (!S.online) { toast("Reconnect first. Refunds need the cloud back office."); return; }
+      if (o.cust !== 1 || !l.key.startsWith("curds")) { toast(`Customer 9: "That's not my order. I only want the curds from my order back."`); return; }
+      if (isCashier()) { dialog(`<h2>Manager approval needed</h2><p class="hint">${esc(staff(S.signedIn).name)} is a cashier and can't approve refunds. A manager enters their PIN.</p><label for="mgrPin">Manager PIN</label><input type="password" id="mgrPin" inputmode="numeric" maxlength="4"><div id="mgrOut"></div><div class="row" style="justify-content:flex-end"><button class="btn" id="mgrCancel">Cancel</button><button class="btn primary" id="mgrGo" data-target="${oi}:${li}">Approve refund</button></div>`); return; }
+      doRefund(oi, li, `${staff(S.signedIn).name} (manager signed in)`); return; }
+    switch (t.id) {
+      case "resetBtn": dialog(`<h2>Reset the simulator?</h2><p>This erases your menu, sales and log and starts the day over.</p><div class="row" style="justify-content:flex-end"><button class="btn" id="rsCancel">Keep my work</button><button class="btn danger" id="rsGo">Reset</button></div>`); break;
+      case "rsCancel": case "mgrCancel": closeDialog(); break;
+      case "rsGo": S = seed(); pay = null; modPicker = ""; closeDialog(); render(); toast("Simulator reset."); break;
+      case "addItem": {
+        const n = $("#niName").value.trim(), p = toCents($("#niPrice").value);
+        if (!n || !(p > 0)) { toast("Enter a name and a price like 7.00."); return; }
+        if (S.menu.some((m) => m.name.toLowerCase() === n.toLowerCase())) { toast("That item is already on the menu."); return; }
+        S.menu.push({ id: "m-" + Date.now().toString(36) + S.menu.length, name: n, price: p, mods: [], recipe: [] }); log(`Added menu item "${n}" at ${fmt(p)}.`); render(); toast(`Added ${n}. Now link its ingredients.`); break; }
+      case "saveTax": { const r = parseFloat($("#taxRate").value); if (!(r >= 0 && r < 20)) { toast("Enter a rate like 5.5."); return; } S.set.tax = Math.round(r * 100) / 100; log(`Sales tax set to ${S.set.tax}%.`); render(); toast("Tax rate saved."); break; }
+      case "saveOff": { const v = parseFloat($("#offLimit").value); if (!(v >= 0)) { toast("Enter a dollar amount."); return; } S.set.offLimit = Math.round(v * 100); log(`Offline limit set to ${fmt(S.set.offLimit)} per sale.`); render(); toast("Offline limit saved."); break; }
+      case "addStaff": {
+        const n = $("#stName").value.trim(), r = $("#stRole").value, p = $("#stPin").value.trim();
+        if (!n) { toast("Enter a name."); return; } if (!/^\d{4}$/.test(p)) { toast("The PIN must be exactly 4 digits."); return; }
+        if (S.staff.some((s) => s.pin === p)) { toast("Someone already uses that PIN. Pick a different one."); return; }
+        S.staff.push({ id: "s-" + Date.now().toString(36), name: n, role: r, pin: p }); log(`Added ${n} as ${r}.`); render(); toast(`${n} added.`); break; }
+      case "swGo": {
+        const s = staff($("#swWho").value), p = $("#swPin").value.trim();
+        if (!s || s.pin !== p) { toast("Wrong PIN."); log("Failed sign-in attempt (wrong PIN)."); save(); return; }
+        S.signedIn = s.id; if (/jake/i.test(s.name) && /cashier/i.test(s.role)) S.flags.jakeSignedIn = true; log(`${s.name} signed in.`); render(); toast(`${s.name} is signed in.`); break; }
+      case "openTruck": S.open = true; log(`Truck opened at 11:00 by ${staff(S.signedIn).name}.`); render(); break;
+      case "charge": charge(); break;
+      case "clearCart": S.cart = []; render(); break;
+      case "modCancel": modPicker = ""; render(); break;
+      case "payBack": if (pay && (pay.payments.length || pay.declined && false)) { toast("Finish the remaining payment."); return; } if (pay && pay.cash) { pay.cash = false; } else pay = null; render(); break;
+      case "cashGo": cashGo(); break;
+      case "reconnect": {
+        S.online = true; const stored = allPayments().filter((p) => p.status === "stored"); let lost = 0;
+        S.orders.forEach((o) => o.payments.forEach((p) => { if (p.status !== "stored") return; if (o.cust === 8) { p.status = "declined-later"; lost += p.amount + (p.tip || 0); } else p.status = "approved"; }));
+        log(`Hotspot reconnected. ${stored.length} stored card payment${stored.length === 1 ? "" : "s"} uploaded.${lost ? ` One was declined by the bank after upload: ${fmt(lost)} lost.` : ""}`);
+        render(); toast(lost ? `Back online. 1 stored payment was declined: ${fmt(lost)} lost. Check Orders.` : "Back online. Stored payments uploaded."); break; }
+      case "mgrGo": { const p = $("#mgrPin").value.trim(), mgr = S.staff.find((s) => s.pin === p && !/cashier/i.test(s.role));
+        if (!mgr) { $("#mgrOut").innerHTML = '<div class="notice bad">That PIN isn\'t a manager\'s.</div>'; log("Refund approval failed: not a manager PIN."); save(); return; }
+        const [oi, li] = t.dataset.target.split(":").map(Number); doRefund(oi, li, "Manager PIN"); break; }
+      case "poGo": { const a = toCents($("#poAmt").value), w = $("#poWhy").value.trim(); if (!(a > 0) || !w) { toast("Enter an amount and a reason."); return; } S.paidOuts.push({ amount: a, why: w, by: staff(S.signedIn).name }); log(`Paid out ${fmt(a)}: ${w}.`); render(); toast("Paid out recorded."); break; }
+      case "countGo": { const v = toCents($("#countAmt").value); if (!(v >= 0)) { toast("Enter the total, like 120.58."); return; } S.counted = v; const d = drawer(); log(`Drawer counted: ${fmt(v)}. Expected ${fmt(d.expected)}; ${v - d.expected === 0 ? "balanced" : (v - d.expected < 0 ? "short " : "over ") + fmt(Math.abs(v - d.expected))}.`); render(); break; }
+      case "placeOrder": { const parts = []; ING.forEach((g) => { const q = parseInt($(`#ord-${g.id}`).value, 10); if (q > 0) { S.onOrder[g.id] = (S.onOrder[g.id] || 0) + q; parts.push(`${q} ${g.name}`); } }); if (!parts.length) { toast("Type an order quantity for at least one item."); return; } log(`Restock order placed: ${parts.join(", ")}.`); render(); toast("Order placed."); break; }
+      case "saveName": S.student = $("#stuName").value.trim(); log(`Student name set to "${S.student}".`); render(); toast("Name saved."); break;
+      case "copyRep": { const txt = $("#repText").textContent; const fallback = () => { const r = document.createRange(); r.selectNodeContents($("#repText")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast("Report selected. Press Ctrl + C (or Cmd + C) to copy."); };
+        try { navigator.clipboard.writeText(txt).then(() => toast("Report copied."), fallback); } catch (err) { fallback(); } break; }
+    }
+  });
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.dataset.price) { const it = item(t.dataset.price), p = toCents(t.value); if (!(p > 0)) { toast("Enter a price like 6.50."); render(); return; } if (p !== it.price) { log(`${it.name} price changed from ${fmt(it.price)} to ${fmt(p)}.`); it.price = p; } render(); }
+    else if (t.dataset.recipe) { const [iid, g] = t.dataset.recipe.split(":"), it = item(iid); it.recipe = t.checked ? [...new Set([...it.recipe, g])] : it.recipe.filter((x) => x !== g); log(`${it.name} ${t.checked ? "now uses" : "no longer uses"} ${ingName(g).toLowerCase()}.`); render(); }
+    else if (t.dataset.rop) { const v = parseInt(t.value, 10); if (v >= 0) { S.rop[t.dataset.rop] = v; log(`Reorder point for ${ingName(t.dataset.rop)} set to ${v}.`); } render(); }
+    else if (["tips", "receipts", "marketing", "offEnabled"].includes(t.id)) { const k = t.id === "offEnabled" ? "offline" : t.id; S.set[k] = t.value; log(`Setting changed: ${k} = "${t.value}".`); render(); }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && $("#layer .overlay")) closeDialog();
+    if (e.key === "Enter" && e.target.id === "scan") {
+      const code = e.target.value.replace(/\D/g, ""), it = S.menu.find((m) => m.upc && (m.upc === code || m.upc.replace(/^0/, "") === code));
+      if (!it) { toast(`No item with barcode ${code || "(blank)"}.`); e.target.value = ""; return; }
+      log(`Scanned ${it.name} (UPC ${it.upc}).`); addToCart(it.id); const s = $("#scan"); if (s) s.focus();
+    }
+  });
+
+  render();
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drone Mission Planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a console shell. Left rail of sections, top context bar (org unit + licenses), work area on the right. Collapses to a top tab strip on phones. */
+:root {
+  --bg: #f3f6f6; --panel: #ffffff; --ink: #172327; --muted: #5b6b70; --line: #d6e1df;
+  --accent: #0e7c7b; --accent-ink: #ffffff; --accent-soft: #e2f1f0; --amber: #e8a33d; --amber-soft: #fbefdb;
+  --good: #2e7d4f; --good-soft: #e3f3e8; --warn: #9a6200; --warn-soft: #fff3d6; --bad: #b5482f; --bad-soft: #f9e3dd;
+  --rail: #12343b; --rail-ink: #e8f1f0; --rail-muted: #9fb7b5;
+  --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.45; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.mono { font-family: var(--font-mono); font-size: 0.9em; }
+.shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100%; }
+.rail { background: var(--rail); color: var(--rail-ink); padding-block: 18px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; display: flex; flex-direction: column; gap: 18px; }
+.brand { display: grid; gap: 2px; }
+.brand b { font-size: 17px; letter-spacing: 0.01em; }
+.brand span { color: var(--rail-muted); font-size: 12px; }
+.nav { display: grid; gap: 2px; }
+.nav button { all: unset; cursor: pointer; padding: 8px 10px; border-radius: 6px; color: var(--rail-ink); display: flex; justify-content: space-between; gap: 8px; }
+.nav button:hover { background: rgba(255,255,255,0.07); }
+.nav button[aria-current="page"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.nav button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.nav .count { font-family: var(--font-mono); font-size: 12px; opacity: 0.85; }
+.rail-foot { margin-top: auto; color: var(--rail-muted); font-size: 12px; display: grid; gap: 8px; }
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding-block: 12px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--panel); border-bottom: 1px solid var(--line); }
+.topbar .ctx { color: var(--muted); font-size: 13px; }
+.topbar .ctx b { color: var(--ink); }
+.lic { margin-left: auto; display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+.meter { width: 120px; height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.work { padding-block: 20px 40px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; align-content: start; }
+h1 { font-size: 24px; margin: 0; text-wrap: balance; }
+h2 { font-size: 17px; margin: 0; }
+p { margin: 0; }
+.sub { color: var(--muted); max-width: 70ch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 4px; }
+.tile .n { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile .l { color: var(--muted); font-size: 13px; }
+.btn { cursor: pointer; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 12px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.small { padding: 3px 8px; font-size: 13px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+input[type=text], select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+textarea { width: 100%; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tree { display: grid; gap: 2px; }
+.tree button { all: unset; cursor: pointer; padding: 5px 8px; border-radius: 6px; display: flex; gap: 6px; align-items: center; }
+.tree button:hover { background: var(--accent-soft); }
+.tree button[aria-selected="true"] { background: var(--accent-soft); font-weight: 700; box-shadow: inset 3px 0 0 var(--accent); }
+.tree button:focus-visible { outline: 2px solid var(--amber); }
+.tree .twig { color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: pre; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--accent-soft); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: none; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.mute { background: var(--line); color: var(--muted); }
+.policy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 300px); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.policy:last-child { border-bottom: none; }
+.policy .help { color: var(--muted); font-size: 13px; }
+.src { font-size: 12px; color: var(--muted); }
+.src.local { color: var(--accent); font-weight: 700; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { all: unset; cursor: pointer; padding: 8px 12px; border-bottom: 3px solid transparent; }
+.tabs button[aria-selected="true"] { border-color: var(--accent); font-weight: 700; }
+.tabs button:focus-visible { outline: 2px solid var(--amber); }
+.mission { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.mission:last-child { border-bottom: none; }
+.check { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.check.done { background: var(--good); color: var(--panel); }
+.check.todo { border: 2px solid var(--line); color: var(--muted); }
+.hint { color: var(--muted); font-size: 13px; }
+.ticket { background: var(--amber-soft); border: 1px solid var(--amber); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 4px; }
+.ticket b { color: var(--ink); }
+.log { display: grid; gap: 0; }
+.log div { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.log time { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.notice { border-radius: var(--r); padding: 10px 12px; font-size: 14px; }
+.notice.bad { background: var(--bad-soft); color: var(--bad); }
+.notice.good { background: var(--good-soft); color: var(--good); }
+.notice.info { background: var(--accent-soft); color: var(--ink); }
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--rail); color: var(--rail-ink); padding: 10px 14px; border-radius: var(--r); box-shadow: 0 6px 24px rgba(0,0,0,0.25); max-width: min(360px, calc(100vw - 32px)); }
+/* Chromebook preview */
+.laptop { width: 100%; max-width: 640px; }
+.screen { aspect-ratio: 16 / 10; max-width: 100%; border: 10px solid #1e2427; border-radius: 12px 12px 4px 4px; position: relative; overflow: hidden; background: #24343a; color: #fff; }
+.base { height: 14px; background: #2c3438; border-radius: 0 0 14px 14px; margin: 0 -4%; }
+.wall-school { background: radial-gradient(circle at 30% 30%, #1b8f8c, #0b3d42 70%); }
+.wall-free { background: repeating-linear-gradient(45deg, #b04ad1 0 24px, #ff8a00 24px 48px, #2ec4ff 48px 72px); }
+.desk { position: absolute; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 12px; gap: 8px; }
+.wall-label { font-size: 13px; background: rgba(0,0,0,0.35); padding: 4px 8px; border-radius: 6px; justify-self: start; }
+.browser { background: #fff; color: #172327; border-radius: 8px; align-self: center; justify-self: center; width: min(88%, 460px); padding: 10px; display: grid; gap: 8px; font-size: 13px; }
+.browser .bar { display: flex; gap: 6px; }
+.browser input { flex: 1; background: #eef3f3; border: 1px solid #c9d6d4; color: #172327; }
+.shelf { justify-self: center; display: flex; gap: 6px; background: rgba(0,0,0,0.45); padding: 6px 10px; border-radius: 99px; flex-wrap: wrap; justify-content: center; }
+.shelf span { background: rgba(255,255,255,0.9); color: #172327; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+.lock { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px; padding: 20px; background: #0d1416; }
+.lock .msg { max-width: 40ch; font-size: 15px; }
+.kiosk { position: absolute; inset: 0; background: #f4f7fb; color: #172327; display: grid; place-content: center; text-align: center; gap: 8px; padding: 16px; }
+.signin { position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; text-align: center; background: #20323a; }
+.signin .card { background: #fff; color: #172327; border-radius: 10px; padding: 16px 20px; display: grid; gap: 8px; min-width: 220px; }
+.overlay { position: fixed; inset: 0; background: rgba(8,16,18,0.55); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.dialog { background: var(--panel); border-radius: 12px; border: 1px solid var(--line); width: min(540px, 100%); max-height: 90vh; overflow: auto; padding: 18px; display: grid; gap: 12px; }
+.disclaimer { font-size: 12px; color: var(--muted); }
+@media (max-width: 760px) {
+  .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .rail { padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 10px; }
+  .nav { grid-auto-flow: column; overflow-x: auto; }
+  .nav button { white-space: nowrap; }
+  .rail-foot { display: none; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .policy { grid-template-columns: minmax(0, 1fr); }
+  .lic { margin-left: 0; }
+  .topbar, .work { padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+}
+@media (prefers-reduced-motion: no-preference) { .nav button, .btn, .tree button { transition: background 0.15s, border-color 0.15s; } }
+</style>
+<style>
+/* Drone planner additions */
+body { margin: 0; }
+.stepper { display: grid; gap: 12px; align-content: start; }
+.mapwrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; }
+.mapwrap svg { width: 100%; height: auto; display: block; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.stat { border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 2px; background: var(--panel); }
+.stat b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.stat.bad { border-color: var(--bad); background: var(--bad-soft); }
+.stat.good { border-color: var(--good); }
+.cards3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.acard { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 6px; background: var(--panel); cursor: pointer; text-align: left; }
+.acard[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+.acard:hover { border-color: var(--accent); }
+.rule { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.rule:last-child { border-bottom: none; }
+.fc td.badw { color: var(--bad); font-weight: 700; }
+.fc td.sel { background: var(--accent-soft); }
+.pf label { display: flex; gap: 8px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.pf label:last-child { border-bottom: none; }
+input[type=number] { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; width: 100px; }
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <a href="index.html" class="hub-back" style="color:var(--rail-ink);font-size:13px;text-decoration:underline;text-underline-offset:3px">&larr; All simulators</a><div class="brand"><b>Mission Planner</b><span>Twin Creeks Ag Cooperative · training</span></div>
+    <nav class="nav" id="nav" aria-label="Sections"></nav>
+    <div class="rail-foot">
+      <span>Drone Mission Planner for 10-150-164 Mobile Devices. A practice tool modeled on drone mapping and airspace apps. It is not an FAA tool and does not give real authorizations. The co-op, fields, airport and weather are fictional. Always check real FAA rules and tools before flying.</span>
+      <button class="btn small" id="resetBtn" style="color:var(--rail-ink);background:transparent;border-color:var(--rail-muted)">Reset simulator</button>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="ctx">Pilot in command <b>Marcus Hale</b> <span class="hint">(Remote Pilot certificate)</span></div>
+      <div class="ctx">Planner <b id="whoName"></b></div>
+      <div class="lic" id="lic"></div>
+    </header>
+    <main class="work" id="work"></main>
+  </div>
+</div>
+<div id="layer"></div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // ---------- World ----------
+  // Map units are feet. North 80 is inside the airport's Class D surface area; the LAANC grid allows 200 ft there.
+  const FIELDS = [
+    { id: "n80", name: "North 80", acres: 80, x: 0, y: 0, w: 2640, h: 1320, laanc: true },
+    { id: "c40", name: "Creek 40", acres: 40, x: 0, y: 1520, w: 1320, h: 1320 },
+    { id: "e60", name: "East 60", acres: 60, x: 1320, y: 1520, w: 1980, h: 1320 },
+  ];
+  const TAKEOFFS = [
+    { id: "yard", name: "Co-op farmyard", x: 1320, y: 1420, note: "Gravel yard between the fields. Open sky, no wires." },
+    { id: "road", name: "Road shoulder on County Road K", x: 3360, y: 640, note: "Easy to park, but the power line runs right overhead." },
+    { id: "kessler", name: "Kessler family's front yard", x: 2750, y: -230, note: "The neighbors' yard, next to their farmhouse." },
+  ];
+  const HOUSE = { x: 2750, y: -330 };
+  const VLOS_FT = 2640; // Marcus can reliably see this drone out to about half a mile
+  const LAANC_CEIL = 200;
+  const DRONES = {
+    m: { name: "AgScout M", cam: "Multispectral (5 bands + RGB)", kg: 1.4, gsdPerFt: 0.0175, px: [1600, 1300], mbPer: 14, interval: 1, windLimit: 24, batMin: 22, spray: false },
+    r: { name: "AgScout R", cam: "RGB 20 MP photo camera", kg: 0.9, gsdPerFt: 0.00825, px: [5472, 3648], mbPer: 9, interval: 2, windLimit: 24, batMin: 24, spray: false },
+    s: { name: "SprayHawk 40", cam: "Spray tank, 40 liters", kg: 38, spray: true },
+  };
+  const BATTERIES = 6;
+  const CARDS = [32, 64, 128, 256];
+  // hourly forecast: [hour, wind, gust, precip, visibility mi]
+  const WX = {
+    Friday: { sunrise: "7:03", civil: "6:35", sunset: "6:22 PM", rows: [[6, 6, 9, "Rain", 2], [7, 6, 10, "Rain", 2], [8, 7, 11, "Rain", 2], [9, 8, 12, "Rain", 2.5], [10, 8, 13, "Drizzle", 3], [11, 9, 15, "None", 10], [12, 11, 18, "None", 10], [13, 16, 28, "None", 10], [14, 18, 30, "None", 10], [15, 18, 31, "None", 10], [16, 17, 29, "None", 10], [17, 14, 24, "None", 10], [18, 10, 16, "None", 10]] },
+    Saturday: { sunrise: "7:04", civil: "6:36", sunset: "6:20 PM", rows: [[6, 3, 5, "None", 10], [7, 4, 6, "None", 10], [8, 5, 8, "None", 10], [9, 7, 12, "None", 10], [10, 7, 12, "None", 10], [11, 7, 12, "None", 10], [12, 7, 12, "None", 10], [13, 8, 13, "None", 10], [14, 8, 13, "None", 10], [15, 8, 13, "None", 10], [16, 8, 12, "None", 10], [17, 6, 10, "None", 10], [18, 5, 8, "None", 10]] },
+  };
+  const SUN = { Friday: [6 * 60 + 35, 7 * 60 + 3, 18 * 60 + 22], Saturday: [6 * 60 + 36, 7 * 60 + 4, 18 * 60 + 20] }; // civil twilight start, sunrise, sunset (minutes)
+  const FIELD_DAY = { day: "Saturday", from: 9 * 60, to: 15 * 60, field: "e60" };
+  const PREFLIGHT = [
+    ["bat", "Enough charged batteries for the whole mission"],
+    ["fw", "Aircraft firmware is up to date"],
+    ["card", "Memory card has room for every image"],
+    ["props", "Propellers and airframe inspected for cracks"],
+    ["rid", "Registration current and Remote ID broadcasting"],
+    ["laanc", "LAANC authorization matches the altitude and time"],
+    ["wx", "Weather re-checked for the planned time"],
+    ["site", "Takeoff and landing area is clear, with no wires overhead"],
+    ["crew", "Crew briefed: a visual observer watches for aircraft and people"],
+  ];
+
+  function seed() {
+    return { v: 1, student: "", drone: "r", alt: 300, front: 70, side: 60, fields: ["n80"], takeoff: "road", boundary: "extend", day: "Friday", start: 9 * 60, lights: false,
+      reg: false, fw: false, card: 32, laanc: null, pf: {}, view: "home",
+      log: [{ t: stamp(), m: "Simulator started. Ellen's request is on the Overview page." }] };
+  }
+  function stamp() { return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  const KEY = "md-drone-sim-v1";
+  let S;
+  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+  if (!S || S.v !== 1) S = seed();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage blocked: keep working in memory */ } }
+  function log(m) { S.log.unshift({ t: stamp(), m }); if (S.log.length > 300) S.log.length = 300; }
+  let toastTimer;
+  function toast(m) { const l = $("#layer"); const o = l.querySelector(".toast"); if (o) o.remove(); const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); t.textContent = m; l.appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 3400); }
+  const hm = (min) => { const h = Math.floor(min / 60), m = min % 60, ap = h >= 12 ? "PM" : "AM"; return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${ap}`; };
+
+  // ---------- Plan math ----------
+  function plan() {
+    const d = DRONES[S.drone];
+    if (d.spray) return null;
+    const gsd = S.alt * d.gsdPerFt; // cm per pixel
+    const fw = (d.px[0] * gsd) / 30.48, fh = (d.px[1] * gsd) / 30.48; // footprint in feet
+    const spacing = fw * (1 - S.side / 100), photoStep = fh * (1 - S.front / 100);
+    const speed = Math.min(44, photoStep / d.interval); // ft per second, capped near 30 mph
+    let lines = 0, dist = 0;
+    const segs = [];
+    S.fields.forEach((id) => {
+      const f = FIELDS.find((x) => x.id === id), inset = S.boundary === "inside" ? fw / 2 : -150;
+      const top = f.y + inset, bot = f.y + f.h - inset, n = Math.max(1, Math.ceil((bot - top) / spacing) + 1);
+      for (let i = 0; i < n; i++) { const yy = top + (i * (bot - top)) / Math.max(1, n - 1); segs.push([f.x + (S.boundary === "inside" ? fw / 2 : -150), yy, f.x + f.w - (S.boundary === "inside" ? fw / 2 : -150), yy]); }
+      lines += n; dist += n * (f.w + (S.boundary === "inside" ? -fw : 300)) + (bot - top);
+    });
+    const flightMin = dist / speed / 60 + (lines * 8) / 60;
+    const bats = Math.ceil(flightMin / d.batMin);
+    const totalMin = Math.round(flightMin + Math.max(0, bats - 1) * 3);
+    const images = Math.ceil(dist / photoStep);
+    const gb = (images * d.mbPer) / 1024;
+    return { d, gsd, fw, fh, spacing, speed, lines, dist, flightMin, bats, totalMin, images, gb, segs };
+  }
+  function window_() { const p = plan(); const dur = p ? p.totalMin : 0; return { start: S.start, end: S.start + dur }; }
+  function hoursIn(w) { const r = []; for (let h = Math.floor(w.start / 60); h * 60 < w.end; h++) r.push(h); return r.length ? r : [Math.floor(w.start / 60)]; }
+  function farthest() {
+    const t = TAKEOFFS.find((x) => x.id === S.takeoff); let m = 0;
+    S.fields.forEach((id) => { const f = FIELDS.find((x) => x.id === id); [[f.x, f.y], [f.x + f.w, f.y], [f.x, f.y + f.h], [f.x + f.w, f.y + f.h]].forEach(([x, y]) => { m = Math.max(m, Math.hypot(x - t.x, y - t.y)); }); });
+    return Math.round(m);
+  }
+  const inLaanc = () => S.fields.includes("n80");
+
+  // ---------- Rules ----------
+  function checks() {
+    const p = plan(), w = window_(), wx = WX[S.day], sun = SUN[S.day];
+    const hrs = hoursIn(w).map((h) => wx.rows.find((r) => r[0] === h)).filter(Boolean);
+    const lim = p ? p.d.windLimit : 0;
+    const L = S.laanc;
+    const laancOk = !inLaanc() || !!(L && L.approved && L.day === S.day && L.start <= w.start && L.start + L.hours * 60 >= w.end && L.alt >= S.alt);
+    const overPeople = S.day === FIELD_DAY.day && S.fields.includes(FIELD_DAY.field) && w.start < FIELD_DAY.to && w.end > FIELD_DAY.from;
+    const dark = w.start < sun[0] || w.end > sun[2] + 30;
+    const twilight = !dark && (w.start < sun[1] || w.end > sun[2]);
+    return {
+      p, w, hrs,
+      camera: S.drone === "m",
+      fields: ["n80", "c40", "e60"].every((f) => S.fields.includes(f)),
+      vlos: !!p && farthest() <= VLOS_FT,
+      site: S.takeoff === "yard",
+      quality: !!p && p.gsd <= 5 && S.front >= 75 && S.side >= 65,
+      alt400: S.alt <= 400,
+      altLaanc: !inLaanc() || S.alt <= LAANC_CEIL,
+      laanc: laancOk,
+      daylight: !dark && (!twilight || S.lights),
+      twilight, dark,
+      rain: hrs.every((r) => r[3] === "None"),
+      vis: hrs.every((r) => r[4] >= 3),
+      wind: !!p && hrs.every((r) => r[2] <= lim),
+      people: !overPeople,
+      bats: !!p && p.bats <= BATTERIES,
+      privacy: S.boundary === "inside" || !S.fields.includes("n80"),
+      reg: S.reg,
+      fwCard: S.fw && !!p && S.card >= p.gb * 1.1,
+    };
+  }
+  function pfValid(k, c) {
+    return { bat: c.bats, fw: S.fw, card: !!c.p && S.card >= c.p.gb * 1.1, props: true, rid: S.reg, laanc: c.laanc && inLaanc() ? true : !inLaanc(), wx: c.rain && c.vis && c.wind && c.daylight, site: c.site, crew: true }[k];
+  }
+  function missions() {
+    const c = checks();
+    const pfDone = PREFLIGHT.every(([k]) => S.pf[k] && pfValid(k, c));
+    return [
+      { t: "Pick the drone and camera that can make a crop health (NDVI) map", d: "Ellen needs to see stressed plants before they're visible to the eye. That takes near-infrared light.", ok: c.camera },
+      { t: "Cover all three fields Ellen asked for", d: "North 80, Creek 40 and East 60.", ok: c.fields },
+      { t: "Choose a takeoff point that keeps the whole mission in Marcus's line of sight and away from hazards", d: "Marcus can reliably see the drone out to about half a mile (2,640 ft).", ok: c.vlos && c.site && c.fields },
+      { t: "Meet the map quality Ellen needs", d: "Image detail (ground sampling distance) of 5 cm per pixel or better, with at least 75% front and 65% side overlap so the mapping software can stitch the photos.", ok: c.quality },
+      { t: "Stay under 400 feet and under the LAANC ceiling over North 80", d: "North 80 is inside the airport's controlled airspace. The LAANC grid there allows 200 ft.", ok: c.alt400 && c.altLaanc && c.fields },
+      { t: "Get a LAANC authorization that covers your altitude and flight time", d: "Request it on the Airspace page after your plan is final. If you change the plan, it may stop matching.", ok: c.laanc && c.fields },
+      { t: "Pick a time with daylight, no rain, good visibility and wind within the drone's limits", d: "Check the forecast for both days. Before sunrise you need anti-collision lights.", ok: c.daylight && c.rain && c.vis && c.wind },
+      { t: "Don't fly over the crowd at Saturday's field day", d: "About 150 people will be on East 60 from 9 AM to 3 PM Saturday.", ok: c.people && c.fields },
+      { t: "Fit the mission on the batteries you have", d: `The co-op has ${BATTERIES} charged batteries. Lower altitude means more flight lines and more batteries.`, ok: c.bats },
+      { t: "Keep the Kesslers' farmhouse out of the images", d: "The neighbors' house sits just past the north edge of North 80.", ok: c.privacy && c.fields },
+      { t: "Renew the drone's registration so Remote ID is legal", d: "Check the Aircraft page.", ok: S.reg },
+      { t: "Update the firmware and pick a memory card big enough for every image", d: "Leave about 10% extra room on the card.", ok: c.fwCard },
+      { t: "Complete the pre-flight checklist", d: "Every item has to be true, not just ticked.", ok: pfDone },
+    ];
+  }
+
+  // ---------- Views ----------
+  const NAV = [["home", "Overview"], ["map", "Mission map"], ["aircraft", "Aircraft and camera"], ["weather", "Weather and time"], ["airspace", "Airspace"], ["rules", "Rules check"], ["preflight", "Pre-flight checklist"], ["missions", "Checklist"], ["log", "Activity log"], ["report", "Submit report"]];
+  function renderNav() {
+    const ms = missions(), done = ms.filter((m) => m.ok).length, rb = rules().filter((r) => !r.ok).length;
+    const counts = { missions: `${done}/${ms.length}`, rules: rb ? `${rb} issues` : "OK" };
+    $("#nav").innerHTML = NAV.map(([v, l]) => `<button data-view="${v}" ${S.view === v ? 'aria-current="page"' : ""}><span>${l}</span>${counts[v] != null ? `<span class="count">${counts[v]}</span>` : ""}</button>`).join("");
+    $("#whoName").textContent = S.student || "Student";
+    $("#lic").innerHTML = `Checklist ${done} of ${ms.length}<span class="meter"><i style="width:${Math.round((done / ms.length) * 100)}%"></i></span>`;
+  }
+  function vHome() {
+    return `<div><h1>Overview</h1><p class="sub">Twin Creeks Ag Cooperative scouts its members' fields. Walking 3,000 acres takes days and misses problems in the middle of fields. Your job is to plan a drone mapping flight that's useful, safe and legal. Marcus, the co-op's certified remote pilot, will fly whatever you plan.</p></div>
+      <div class="ticket"><b>Message from Ellen Brandt, agronomy manager</b><span>"I need a crop health map of the North 80, Creek 40 and East 60 this weekend, Friday or Saturday, so we can catch nitrogen problems before they cost us yield. The map has to be sharp enough to show problem spots, about 5 centimeters per pixel or better. Heads up: North 80 is close to Lakeshore Regional Airport, our neighbors the Kesslers live right off the north edge, and Saturday is our field day on East 60. And no, we can't just spray from the drone while we're at it. Ask Marcus why."</span></div>
+      <div class="panel"><h2>How to use this planner</h2><p class="hint"><b>Mission map:</b> fields, takeoff point and boundary. <b>Aircraft and camera:</b> drone, altitude, overlap, registration, firmware and memory card. <b>Weather and time:</b> pick the day and start time. <b>Airspace:</b> request LAANC authorization. <b>Rules check</b> shows the FAA rules live. Finish with the <b>Pre-flight checklist</b>, then copy your report.</p></div>
+      ${statsHTML()}
+      <div class="panel"><h2>Recent activity</h2>${logHTML(6)}</div>`;
+  }
+  function statsHTML() {
+    const p = plan(), c = checks();
+    if (!p) return '<div class="notice bad">No camera drone selected. Pick a drone on the Aircraft and camera page.</div>';
+    const st = (v, l, ok) => `<div class="stat ${ok === false ? "bad" : ok ? "good" : ""}"><b>${v}</b><span>${l}</span></div>`;
+    return `<div class="stats">${st(p.gsd.toFixed(1) + " cm/px", "Image detail (GSD)", p.gsd <= 5)}${st(Math.round(p.fw) + " × " + Math.round(p.fh) + " ft", "One photo covers")}${st(p.lines, "Flight lines")}${st((p.dist / 5280).toFixed(1) + " mi", "Distance flown")}${st(Math.round(p.speed * 0.6818) + " mph", "Flight speed")}${st(p.totalMin + " min", "Mission time with battery swaps")}${st(p.bats + " of " + BATTERIES, "Batteries needed", p.bats <= BATTERIES)}${st(p.images.toLocaleString(), "Photos")}${st(p.gb.toFixed(0) + " GB", "Data to store", S.card >= p.gb * 1.1)}${st(farthest().toLocaleString() + " ft", "Farthest point from pilot", c.vlos)}</div>`;
+  }
+  function mapSVG() {
+    const p = plan(), c = checks(), t = TAKEOFFS.find((x) => x.id === S.takeoff);
+    const fld = FIELDS.map((f) => { const on = S.fields.includes(f.id); return `<rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" fill="${on ? "#7fb069" : "#c9d8b6"}" fill-opacity="${on ? 0.55 : 0.35}" stroke="#4d6b3c" stroke-width="12"/><text x="${f.x + 60}" y="${f.y + 150}" font-size="130" font-weight="700" fill="#1f3315" paint-order="stroke" stroke="#eef3e8" stroke-width="18">${f.name}</text><text x="${f.x + 60}" y="${f.y + 290}" font-size="95" fill="#1f3315" paint-order="stroke" stroke="#eef3e8" stroke-width="16">${f.acres} acres${f.id === "e60" ? " · field day Sat 9–3" : ""}</text>`; }).join("");
+    const lines = p ? p.segs.map((s) => `<line x1="${s[0]}" y1="${s[1]}" x2="${s[2]}" y2="${s[3]}" stroke="#0e7c7b" stroke-width="8" stroke-opacity="0.8"/>`).join("") : "";
+    return `<svg viewBox="-450 -700 4300 3700" role="img" aria-label="Map of the three fields, takeoff point, airspace and hazards">
+      <rect x="-450" y="-700" width="4300" height="3700" fill="#eef3e8"/>
+      <rect x="-450" y="-700" width="4300" height="2120" fill="#3f6fb5" fill-opacity="0.08"/>
+      <line x1="-450" y1="1420" x2="3850" y2="1420" stroke="#3f6fb5" stroke-width="14" stroke-dasharray="60 40"/>
+      <text x="-400" y="-560" font-size="105" fill="#2b4f86" font-weight="700">Class D airspace (Lakeshore Regional Airport, 3 mi northwest)</text>
+      <text x="-400" y="-440" font-size="95" fill="#2b4f86">LAANC ceiling ${LAANC_CEIL} ft · authorization required</text>
+      <text x="-400" y="2990" font-size="95" fill="#2b4f86">Below the dashed line: Class G, no authorization needed, 400 ft max</text>
+      <rect x="3330" y="-700" width="120" height="3700" fill="#b9b2a5"/><text x="3390" y="2600" font-size="80" fill="#3d3a33" transform="rotate(90 3390 2600)">County Road K</text>
+      <line x1="3480" y1="-700" x2="3480" y2="3000" stroke="#7a3b1e" stroke-width="10" stroke-dasharray="30 30"/><text x="3520" y="300" font-size="70" fill="#7a3b1e" transform="rotate(90 3520 300)">Power line</text>
+      ${fld}
+      <rect x="0" y="1320" width="3300" height="200" fill="#d8cfbd"/><text x="2300" y="1455" font-size="90" fill="#5a503f">Co-op farmyard</text>
+      <rect x="${HOUSE.x - 110}" y="${HOUSE.y - 110}" width="220" height="200" fill="#b5482f"/><polygon points="${HOUSE.x - 140},${HOUSE.y - 100} ${HOUSE.x},${HOUSE.y - 220} ${HOUSE.x + 140},${HOUSE.y - 100}" fill="#7a2f1e"/><text x="${HOUSE.x - 820}" y="${HOUSE.y - 20}" font-size="95" fill="#7a2f1e">Kessler house</text>
+      ${lines}
+      ${p ? `<circle cx="${t.x}" cy="${t.y}" r="${VLOS_FT}" fill="none" stroke="${c.vlos ? "#2e7d4f" : "#b5482f"}" stroke-width="14" stroke-dasharray="50 35"/>` : ""}
+      ${TAKEOFFS.map((x) => `<circle cx="${x.x}" cy="${x.y}" r="${x.id === S.takeoff ? 85 : 55}" fill="${x.id === S.takeoff ? "#e8a33d" : "#ffffff"}" stroke="#12343b" stroke-width="14"/>`).join("")}
+      ${TAKEOFFS.map((x) => `<text x="${x.x - 120}" y="${x.y + 190}" font-size="${x.id === S.takeoff ? 105 : 85}" font-weight="${x.id === S.takeoff ? 700 : 400}" fill="#12343b" text-anchor="end" paint-order="stroke" stroke="#eef3e8" stroke-width="16">${x.id === S.takeoff ? "Takeoff" : x.id === "road" ? "Road" : "Kessler yard"}</text>`).join("")}
+    </svg>`;
+  }
+  function vMap() {
+    return `<div><h1>Mission map</h1><p class="sub">Teal lines are the flight path. The dashed circle shows how far Marcus can keep the drone in sight from the takeoff point (about half a mile). The blue area is controlled airspace.</p></div>
+      <div class="grid2" style="grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr)"><div class="mapwrap">${mapSVG()}</div>
+      <div class="stepper"><div class="panel"><h2>Fields to map</h2>${FIELDS.map((f) => `<label style="display:flex;gap:8px"><input type="checkbox" data-field="${f.id}" ${S.fields.includes(f.id) ? "checked" : ""}>${f.name} (${f.acres} acres)</label>`).join("")}</div>
+      <div class="panel"><h2>Takeoff point</h2>${TAKEOFFS.map((x) => `<label style="display:grid;grid-template-columns:auto 1fr;gap:8px"><input type="radio" name="tko" data-takeoff="${x.id}" ${S.takeoff === x.id ? "checked" : ""}><span><b>${x.name}</b><br><span class="hint">${x.note}</span></span></label>`).join("")}</div>
+      <div class="panel"><h2>Mission boundary</h2><select id="boundary"><option value="extend" ${S.boundary === "extend" ? "selected" : ""}>Extend 150 ft past field edges (full edge coverage)</option><option value="inside" ${S.boundary === "inside" ? "selected" : ""}>Stay inside the field edges</option></select><p class="hint">Photos cover ground on both sides of each flight line, so a boundary past the edge also photographs whatever is next to the field.</p></div></div></div>
+      ${statsHTML()}`;
+  }
+  function vAircraft() {
+    const p = plan();
+    return `<div><h1>Aircraft and camera</h1><p class="sub">Pick the aircraft, then set altitude and overlap. Watch how each choice changes image detail, flight time and batteries.</p></div>
+      <div class="cards3">${Object.entries(DRONES).map(([k, d]) => `<button class="acard" data-drone="${k}" aria-pressed="${S.drone === k}"><b>${d.name}</b><span class="hint">${d.cam}</span><span class="hint">${d.kg} kg${d.spray ? " · spray drone" : ` · ${d.batMin} min usable per battery · gusts up to ${d.windLimit} mph`}</span></button>`).join("")}</div>
+      ${S.drone === "s" ? `<div class="notice bad"><b>Marcus: "We can't fly that one for this job."</b> Spraying crops from a drone counts as an agricultural aircraft operation. It needs an FAA Part 137 agricultural aircraft operator certificate, and a drone this heavy (over 55 lb loaded) needs extra FAA approval too. Applying pesticide also takes a state pesticide applicator license. The co-op has none of those, so this weekend is scouting only.</div>` : `
+      <div class="panel">
+        <div class="policy"><div><b>Altitude above ground (ft)</b><p class="help">Higher means each photo covers more ground but with less detail. Part 107 caps most flights at 400 ft, and the LAANC grid can set a lower ceiling.</p></div><div class="row"><input type="number" id="alt" min="50" max="500" step="10" value="${S.alt}"><button class="btn primary" id="saveAlt">Set</button></div></div>
+        <div class="policy"><div><b>Front overlap</b><p class="help">How much each photo overlaps the next one along the flight line.</p></div><select id="front">${[60, 65, 70, 75, 80, 85].map((v) => `<option value="${v}" ${S.front === v ? "selected" : ""}>${v}%</option>`).join("")}</select></div>
+        <div class="policy"><div><b>Side overlap</b><p class="help">How much each flight line's photos overlap the next line.</p></div><select id="side">${[50, 55, 60, 65, 70, 75].map((v) => `<option value="${v}" ${S.side === v ? "selected" : ""}>${v}%</option>`).join("")}</select></div>
+      </div>${statsHTML()}`}
+      <div class="panel"><h2>Aircraft records</h2><div class="tablewrap"><table><tbody>
+        <tr><td>FAA registration</td><td>${S.reg ? '<span class="pill good">Current until 2029</span>' : '<span class="pill bad">Expired last month</span>'}</td><td>${S.reg ? "" : '<button class="btn small primary" id="renew">Renew on FAADroneZone</button>'}</td></tr>
+        <tr><td>Remote ID</td><td>Standard Remote ID, built in. ${S.reg ? '<span class="pill good">Broadcasting, serial on registration</span>' : '<span class="pill warn">Serial must be on a current registration</span>'}</td><td></td></tr>
+        <tr><td>Firmware</td><td>${S.fw ? '<span class="pill good">2.4.0 (latest)</span>' : '<span class="pill warn">2.3.1 · update 2.4.0 available: fixes a compass calibration bug</span>'}</td><td>${S.fw ? "" : '<button class="btn small" id="fwGo">Update firmware</button>'}</td></tr>
+        <tr><td>Memory card</td><td><select id="card">${CARDS.map((g) => `<option value="${g}" ${S.card === g ? "selected" : ""}>${g} GB</option>`).join("")}</select></td><td class="hint">${p ? `Plan needs about ${p.gb.toFixed(0)} GB plus room to spare` : ""}</td></tr>
+      </tbody></table></div><p class="hint">Registration is $5 for three years and is paid by the co-op. Drones under 250 g flown for fun don't need registration, but any drone flown for work does.</p></div>`;
+  }
+  function vWeather() {
+    const c = checks(), sun = WX[S.day], lim = c.p ? c.p.d.windLimit : 24, hrs = hoursIn(c.w);
+    const opts = []; for (let m = 6 * 60; m <= 18 * 60; m += 30) opts.push(m);
+    return `<div><h1>Weather and time</h1><p class="sub">Part 107 allows flying in daylight, and in civil twilight (the half hour before sunrise and after sunset) if the drone has anti-collision lights. You also need at least 3 miles of visibility. Rain and strong gusts are limits of the aircraft.</p></div>
+      <div class="panel"><div class="row"><label for="day">Day</label><select id="day">${["Friday", "Saturday"].map((d) => `<option ${S.day === d ? "selected" : ""}>${d}</option>`).join("")}</select>
+        <label for="start">Start</label><select id="start">${opts.map((m) => `<option value="${m}" ${S.start === m ? "selected" : ""}>${hm(m)}</option>`).join("")}</select>
+        <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="lights" ${S.lights ? "checked" : ""}>Anti-collision lights on</label></div>
+        <p>Planned window: <b>${S.day} ${hm(c.w.start)} to ${hm(c.w.end)}</b> (${c.p ? c.p.totalMin : 0} minutes). Civil twilight ${sun.civil} AM · sunrise ${sun.sunrise} AM · sunset ${sun.sunset}.</p>
+        ${S.day === "Saturday" ? '<div class="notice info">Field day on East 60, Saturday 9 AM to 3 PM, about 150 people.</div>' : ""}</div>
+      <div class="tablewrap"><table class="fc"><thead><tr><th>${S.day}</th><th>Wind (mph)</th><th>Gusts (mph)</th><th>Rain</th><th>Visibility (mi)</th></tr></thead><tbody>
+      ${sun.rows.map((r) => { const sel = hrs.includes(r[0]) ? "sel" : ""; return `<tr><td class="${sel}">${hm(r[0] * 60)}</td><td class="${sel}">${r[1]}</td><td class="${sel} ${r[2] > lim ? "badw" : ""}">${r[2]}</td><td class="${sel} ${r[3] !== "None" ? "badw" : ""}">${r[3]}</td><td class="${sel} ${r[4] < 3 ? "badw" : ""}">${r[4]}</td></tr>`; }).join("")}
+      </tbody></table></div><p class="hint">Highlighted rows are hours your mission is in the air. Red values break a rule or the aircraft's limits (gusts over ${lim} mph).</p>`;
+  }
+  function vAirspace() {
+    const c = checks(), L = S.laanc;
+    return `<div><h1>Airspace</h1><p class="sub">North 80 is inside the Class D airspace around Lakeshore Regional Airport. To fly there under Part 107 you need an authorization. LAANC (Low Altitude Authorization and Notification Capability) gives near-instant approval at or below the altitude shown on the FAA's grid map. Creek 40 and East 60 are in Class G airspace, where no authorization is needed.</p></div>
+      ${inLaanc() ? "" : '<div class="notice info">Your plan doesn\'t include North 80, so no authorization is needed. (Ellen does want North 80 mapped.)</div>'}
+      <div class="panel"><h2>Request LAANC authorization</h2>
+        <div class="row"><label for="lAlt">Max altitude (ft)</label><input type="number" id="lAlt" value="${S.alt}" min="0" max="400" step="10"><label for="lStart">Start</label><input type="text" id="lStart" value="${S.day} ${hm(S.start)}" disabled style="width:170px"><label for="lHours">Duration</label><select id="lHours">${[1, 2, 3, 4].map((h) => `<option value="${h}" ${h === Math.min(4, Math.max(1, Math.ceil((c.p ? c.p.totalMin : 60) / 60))) ? "selected" : ""}>${h} hour${h > 1 ? "s" : ""}</option>`).join("")}</select><button class="btn primary" id="lGo">Submit request</button></div>
+        <p class="hint">Pilot: Marcus Hale, Part 107 remote pilot. The request uses your planned day and start time.</p>
+        ${L ? `<div class="notice ${L.approved ? (c.laanc ? "good" : "bad") : "bad"}">${L.approved ? `<b>Approved:</b> up to ${L.alt} ft, ${L.day} ${hm(L.start)} to ${hm(L.start + L.hours * 60)}. ${c.laanc ? "It covers your current plan." : "<b>It no longer matches your plan.</b> Your altitude or flight window has changed. Submit a new request."}` : `<b>Not approved instantly:</b> ${esc(L.why)}`}</div>` : ""}</div>
+      <div class="panel"><h2>Other airspace checks</h2><div class="tablewrap"><table><tbody>
+        <tr><td>Temporary flight restrictions (TFRs)</td><td><span class="pill good">None this weekend</span></td></tr>
+        <tr><td>NOTAMs near the fields</td><td><span class="hint">Crop duster working 5 miles south, Friday morning. Keep a lookout and give way to crewed aircraft.</span></td></tr>
+        <tr><td>Hospital helipads</td><td><span class="hint">None within 3 miles.</span></td></tr></tbody></table></div></div>`;
+  }
+  function rules() {
+    const c = checks();
+    return [
+      { t: "Remote pilot certificate", ok: true, d: "Marcus holds a Part 107 Remote Pilot certificate and his recurrent training is current. Flying for a business needs this, not just the recreational TRUST certificate." },
+      { t: "Aircraft registered and Remote ID broadcasting", ok: S.reg, d: S.reg ? "Registration is current and lists the Remote ID serial number." : "The registration expired. Renew it on the Aircraft page." },
+      { t: "400 ft maximum altitude", ok: c.alt400, d: `Planned altitude: ${S.alt} ft.` },
+      { t: "Authorization for controlled airspace", ok: c.altLaanc && c.laanc, d: !inLaanc() ? "Not needed: the plan stays in Class G." : !c.altLaanc ? `${S.alt} ft is above the ${LAANC_CEIL} ft LAANC ceiling over North 80.` : c.laanc ? "LAANC approval covers the plan." : "No LAANC approval matches the plan yet." },
+      { t: "Visual line of sight", ok: c.vlos, d: `The farthest point is ${farthest().toLocaleString()} ft from the takeoff point. Marcus can reliably see this drone to about 2,640 ft.` },
+      { t: "Daylight or civil twilight with lights", ok: c.daylight, d: c.dark ? "Part of the flight is in darkness." : c.twilight && !S.lights ? "Part of the flight is in civil twilight. Turn on anti-collision lights." : "Flight is in daylight." },
+      { t: "Weather minimums: 3 miles visibility", ok: c.vis, d: c.vis ? "Visibility is 3 miles or more." : "Rain cuts visibility below 3 miles during the flight." },
+      { t: "Not over people", ok: c.people, d: c.people ? "No gatherings under the flight path." : "The flight crosses East 60 during the field day crowd." },
+      { t: "Yield right of way to crewed aircraft", ok: true, d: "Always. Note the crop duster NOTAM Friday morning." },
+      { t: "Aircraft limits: rain and wind", ok: c.rain && c.wind, d: !c.rain ? "Rain during the flight. This drone isn't rated for rain." : !c.wind ? "Gusts are above the drone's limit during the flight." : "Within the drone's limits." },
+    ];
+  }
+  function vRules() {
+    return `<div><h1>Rules check</h1><p class="sub">Key FAA Part 107 rules and aircraft limits, checked live against your plan. This is a teaching summary, not the full regulation.</p></div>
+      <div class="panel">${rules().map((r) => `<div class="rule"><span class="check ${r.ok ? "done" : "todo"}" style="${r.ok ? "" : "border-color:var(--bad);color:var(--bad)"}">${r.ok ? "✓" : "!"}</span><div><b>${r.t}</b><p class="hint">${esc(r.d)}</p></div></div>`).join("")}</div>`;
+  }
+  function vPreflight() {
+    const c = checks();
+    return `<div><h1>Pre-flight checklist</h1><p class="sub">Marcus won't launch until every item is checked. An item only counts if it's actually true for your plan.</p></div>
+      <div class="panel pf">${PREFLIGHT.map(([k, l]) => { const v = pfValid(k, c); return `<label><input type="checkbox" data-pf="${k}" ${S.pf[k] ? "checked" : ""}><span>${l}${S.pf[k] && !v ? ' <span class="pill bad">Not true right now</span>' : ""}</span></label>`; }).join("")}</div>`;
+  }
+  function vMissions() {
+    const ms = missions();
+    return `<div><h1>Ellen's checklist</h1><p class="sub">Each item checks itself as soon as your plan meets it.</p></div>
+      <div class="panel">${ms.map((m, i) => `<div class="mission"><span class="check ${m.ok ? "done" : "todo"}">${m.ok ? "✓" : i + 1}</span><div><b>${m.t}</b><p class="hint">${m.d}</p></div></div>`).join("")}</div>`;
+  }
+  function logHTML(n) { return `<div class="log">${S.log.slice(0, n).map((l) => `<div><time>${l.t}</time><span>${esc(l.m)}</span></div>`).join("")}</div>`; }
+  function vLog() { return `<div><h1>Activity log</h1><p class="sub">Every change, newest first. Commercial drone operators keep flight plans and logs like this.</p></div><div class="panel">${logHTML(300)}</div>`; }
+  function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).toUpperCase().padStart(7, "0"); }
+  function reportText() {
+    const ms = missions(), p = plan(), c = checks(), L = S.laanc;
+    const body = [
+      "Drone Mission Planner report (Twin Creeks Ag Cooperative)",
+      `Planner: ${S.student || "(name not entered)"}`,
+      `Generated: ${new Date().toLocaleString()}`,
+      `Checklist: ${ms.filter((m) => m.ok).length} of ${ms.length} complete`,
+      ...ms.map((m) => `  [${m.ok ? "x" : " "}] ${m.t}`),
+      "", `Aircraft: ${DRONES[S.drone].name} (${DRONES[S.drone].cam}); registration ${S.reg ? "current" : "EXPIRED"}; firmware ${S.fw ? "2.4.0" : "2.3.1"}; card ${S.card} GB`,
+      `Fields: ${S.fields.map((id) => FIELDS.find((f) => f.id === id).name).join(", ") || "(none)"}; boundary: ${S.boundary === "inside" ? "inside field edges" : "150 ft past edges"}; takeoff: ${TAKEOFFS.find((t) => t.id === S.takeoff).name}`,
+      p ? `Plan: ${S.alt} ft; overlap ${S.front}% front / ${S.side}% side; GSD ${p.gsd.toFixed(2)} cm/px; ${p.lines} lines; ${(p.dist / 5280).toFixed(2)} mi; ${p.totalMin} min; ${p.bats} batteries; ${p.images} photos; ${p.gb.toFixed(1)} GB; farthest point ${farthest()} ft` : "Plan: no camera drone selected",
+      `Time: ${S.day} ${hm(c.w.start)} to ${hm(c.w.end)}; anti-collision lights ${S.lights ? "on" : "off"}`,
+      `LAANC: ${L ? (L.approved ? `approved to ${L.alt} ft, ${L.day} ${hm(L.start)} for ${L.hours} h${c.laanc ? "" : " (DOES NOT MATCH PLAN)"}` : "not approved: " + L.why) : inLaanc() ? "not requested" : "not needed"}`,
+      "Rules:", ...rules().map((r) => `  [${r.ok ? "x" : " "}] ${r.t}`),
+      `Pre-flight: ${PREFLIGHT.filter(([k]) => S.pf[k] && pfValid(k, c)).length} of ${PREFLIGHT.length} items true`,
+      "", `Changes logged: ${S.log.length}`,
+    ].join("\n");
+    return body + `\nVerification code: ${hash((S.student || "") + "|" + body.replace(/Generated: .*\n/, ""))}`;
+  }
+  function vReport() {
+    return `<div><h1>Submit report</h1><p class="sub">Enter your name, then copy this report into your Solve It submission. The verification code changes whenever your plan or name changes.</p></div>
+      <div class="panel"><div class="row"><label for="stuName">Your name</label><input type="text" id="stuName" value="${esc(S.student)}" placeholder="First and last name"><button class="btn primary" id="saveName">Save name</button></div></div>
+      <div class="panel"><div class="row" style="justify-content:space-between"><h2>Flight plan report</h2><button class="btn" id="copyRep">Copy report</button></div>
+      <div class="tablewrap" style="border:none"><pre class="mono" id="repText" style="margin:0;white-space:pre-wrap;font-size:13px">${esc(reportText())}</pre></div></div>`;
+  }
+  function render() {
+    renderNav();
+    const v = { home: vHome, map: vMap, aircraft: vAircraft, weather: vWeather, airspace: vAirspace, rules: vRules, preflight: vPreflight, missions: vMissions, log: vLog, report: vReport }[S.view] || vHome;
+    $("#work").innerHTML = v();
+    save();
+  }
+  function dialog(html) { $("#layer").innerHTML = `<div class="overlay"><div class="dialog" role="dialog" aria-modal="true">${html}</div></div>`; const f = $("#layer .dialog").querySelector("button"); if (f) f.focus(); }
+  const closeDialog = () => { $("#layer").innerHTML = ""; };
+
+  // ---------- Events ----------
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button"); if (!t || t.disabled) return;
+    if (t.dataset.view) { S.view = t.dataset.view; render(); return; }
+    if (t.dataset.drone) { S.drone = t.dataset.drone; log(t.dataset.drone === "s" ? "Tried to plan with the SprayHawk 40. Spraying isn't allowed for this job." : `Aircraft set to ${DRONES[S.drone].name}.`); render(); return; }
+    switch (t.id) {
+      case "resetBtn": dialog(`<h2>Reset the simulator?</h2><p>This erases your plan and log.</p><div class="row" style="justify-content:flex-end"><button class="btn" id="rsCancel">Keep my work</button><button class="btn danger" id="rsGo">Reset</button></div>`); break;
+      case "rsCancel": closeDialog(); break;
+      case "rsGo": S = seed(); closeDialog(); render(); toast("Simulator reset."); break;
+      case "saveAlt": { const v = parseInt($("#alt").value, 10); if (!(v >= 50 && v <= 500)) { toast("Enter an altitude from 50 to 500 ft."); return; } S.alt = v; log(`Altitude set to ${v} ft.`); render(); break; }
+      case "renew": S.reg = true; log("Registration renewed on FAADroneZone ($5, paid by the co-op). Remote ID serial listed."); render(); toast("Registration renewed."); break;
+      case "fwGo": S.fw = true; log("Firmware updated to 2.4.0."); render(); toast("Firmware updated."); break;
+      case "lGo": {
+        const a = parseInt($("#lAlt").value, 10), h = parseInt($("#lHours").value, 10);
+        if (!inLaanc()) { toast("No authorization needed: the plan doesn't include North 80."); return; }
+        if (!(a > 0)) { toast("Enter a max altitude."); return; }
+        S.laanc = a <= LAANC_CEIL ? { approved: true, alt: a, day: S.day, start: S.start, hours: h } : { approved: false, why: `${a} ft is above the ${LAANC_CEIL} ft grid ceiling. A request above the grid needs further coordination through FAADroneZone and can take weeks, so it won't be ready this weekend.`, alt: a, day: S.day, start: S.start, hours: h };
+        log(S.laanc.approved ? `LAANC approved: ${a} ft, ${S.day} ${hm(S.start)}, ${h} h.` : `LAANC request for ${a} ft not approved (above the grid ceiling).`); render(); break; }
+      case "saveName": S.student = $("#stuName").value.trim(); log(`Planner name set to "${S.student}".`); render(); toast("Name saved."); break;
+      case "copyRep": { const txt = $("#repText").textContent; const fb = () => { const r = document.createRange(); r.selectNodeContents($("#repText")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Report selected. Press Ctrl + C (or Cmd + C) to copy."); };
+        try { navigator.clipboard.writeText(txt).then(() => toast("Report copied."), fb); } catch (err) { fb(); } break; }
+    }
+  });
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.dataset.field) { const id = t.dataset.field; S.fields = t.checked ? [...new Set([...S.fields, id])] : S.fields.filter((x) => x !== id); S.fields.sort(); log(`${FIELDS.find((f) => f.id === id).name} ${t.checked ? "added to" : "removed from"} the mission.`); render(); }
+    else if (t.dataset.takeoff) { S.takeoff = t.dataset.takeoff; log(`Takeoff point: ${TAKEOFFS.find((x) => x.id === S.takeoff).name}.`); render(); }
+    else if (t.dataset.pf) { S.pf[t.dataset.pf] = t.checked; const c = checks(); if (t.checked && !pfValid(t.dataset.pf, c)) toast("Marcus: \"That isn't true for this plan yet.\""); log(`Pre-flight "${PREFLIGHT.find((x) => x[0] === t.dataset.pf)[1]}" ${t.checked ? "checked" : "unchecked"}.`); render(); }
+    else if (t.id === "boundary") { S.boundary = t.value; log(`Boundary: ${t.value === "inside" ? "inside field edges" : "150 ft past edges"}.`); render(); }
+    else if (t.id === "front" || t.id === "side") { S[t.id] = parseInt(t.value, 10); log(`${t.id === "front" ? "Front" : "Side"} overlap set to ${t.value}%.`); render(); }
+    else if (t.id === "card") { S.card = parseInt(t.value, 10); log(`Memory card: ${t.value} GB.`); render(); }
+    else if (t.id === "day") { S.day = t.value; log(`Day set to ${t.value}.`); render(); }
+    else if (t.id === "start") { S.start = parseInt(t.value, 10); log(`Start time set to ${hm(S.start)}.`); render(); }
+    else if (t.id === "lights") { S.lights = t.checked; log(`Anti-collision lights ${t.checked ? "on" : "off"}.`); render(); }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && $("#layer .overlay")) closeDialog();
+    if (e.key === "Enter" && e.target.id === "alt") $("#saveAlt").click();
+  });
+  render();
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plate Reader Policy Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a console shell. Left rail of sections, top context bar (org unit + licenses), work area on the right. Collapses to a top tab strip on phones. */
+:root {
+  --bg: #f3f6f6; --panel: #ffffff; --ink: #172327; --muted: #5b6b70; --line: #d6e1df;
+  --accent: #0e7c7b; --accent-ink: #ffffff; --accent-soft: #e2f1f0; --amber: #e8a33d; --amber-soft: #fbefdb;
+  --good: #2e7d4f; --good-soft: #e3f3e8; --warn: #9a6200; --warn-soft: #fff3d6; --bad: #b5482f; --bad-soft: #f9e3dd;
+  --rail: #12343b; --rail-ink: #e8f1f0; --rail-muted: #9fb7b5;
+  --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.45; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.mono { font-family: var(--font-mono); font-size: 0.9em; }
+.shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100%; }
+.rail { background: var(--rail); color: var(--rail-ink); padding-block: 18px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; display: flex; flex-direction: column; gap: 18px; }
+.brand { display: grid; gap: 2px; }
+.brand b { font-size: 17px; letter-spacing: 0.01em; }
+.brand span { color: var(--rail-muted); font-size: 12px; }
+.nav { display: grid; gap: 2px; }
+.nav button { all: unset; cursor: pointer; padding: 8px 10px; border-radius: 6px; color: var(--rail-ink); display: flex; justify-content: space-between; gap: 8px; }
+.nav button:hover { background: rgba(255,255,255,0.07); }
+.nav button[aria-current="page"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.nav button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.nav .count { font-family: var(--font-mono); font-size: 12px; opacity: 0.85; }
+.rail-foot { margin-top: auto; color: var(--rail-muted); font-size: 12px; display: grid; gap: 8px; }
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding-block: 12px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--panel); border-bottom: 1px solid var(--line); }
+.topbar .ctx { color: var(--muted); font-size: 13px; }
+.topbar .ctx b { color: var(--ink); }
+.lic { margin-left: auto; display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+.meter { width: 120px; height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.work { padding-block: 20px 40px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; align-content: start; }
+h1 { font-size: 24px; margin: 0; text-wrap: balance; }
+h2 { font-size: 17px; margin: 0; }
+p { margin: 0; }
+.sub { color: var(--muted); max-width: 70ch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 4px; }
+.tile .n { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile .l { color: var(--muted); font-size: 13px; }
+.btn { cursor: pointer; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 12px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.small { padding: 3px 8px; font-size: 13px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+input[type=text], select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+textarea { width: 100%; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tree { display: grid; gap: 2px; }
+.tree button { all: unset; cursor: pointer; padding: 5px 8px; border-radius: 6px; display: flex; gap: 6px; align-items: center; }
+.tree button:hover { background: var(--accent-soft); }
+.tree button[aria-selected="true"] { background: var(--accent-soft); font-weight: 700; box-shadow: inset 3px 0 0 var(--accent); }
+.tree button:focus-visible { outline: 2px solid var(--amber); }
+.tree .twig { color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: pre; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--accent-soft); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: none; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.mute { background: var(--line); color: var(--muted); }
+.policy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 300px); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.policy:last-child { border-bottom: none; }
+.policy .help { color: var(--muted); font-size: 13px; }
+.src { font-size: 12px; color: var(--muted); }
+.src.local { color: var(--accent); font-weight: 700; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { all: unset; cursor: pointer; padding: 8px 12px; border-bottom: 3px solid transparent; }
+.tabs button[aria-selected="true"] { border-color: var(--accent); font-weight: 700; }
+.tabs button:focus-visible { outline: 2px solid var(--amber); }
+.mission { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.mission:last-child { border-bottom: none; }
+.check { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.check.done { background: var(--good); color: var(--panel); }
+.check.todo { border: 2px solid var(--line); color: var(--muted); }
+.hint { color: var(--muted); font-size: 13px; }
+.ticket { background: var(--amber-soft); border: 1px solid var(--amber); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 4px; }
+.ticket b { color: var(--ink); }
+.log { display: grid; gap: 0; }
+.log div { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.log time { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.notice { border-radius: var(--r); padding: 10px 12px; font-size: 14px; }
+.notice.bad { background: var(--bad-soft); color: var(--bad); }
+.notice.good { background: var(--good-soft); color: var(--good); }
+.notice.info { background: var(--accent-soft); color: var(--ink); }
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--rail); color: var(--rail-ink); padding: 10px 14px; border-radius: var(--r); box-shadow: 0 6px 24px rgba(0,0,0,0.25); max-width: min(360px, calc(100vw - 32px)); }
+/* Chromebook preview */
+.laptop { width: 100%; max-width: 640px; }
+.screen { aspect-ratio: 16 / 10; max-width: 100%; border: 10px solid #1e2427; border-radius: 12px 12px 4px 4px; position: relative; overflow: hidden; background: #24343a; color: #fff; }
+.base { height: 14px; background: #2c3438; border-radius: 0 0 14px 14px; margin: 0 -4%; }
+.wall-school { background: radial-gradient(circle at 30% 30%, #1b8f8c, #0b3d42 70%); }
+.wall-free { background: repeating-linear-gradient(45deg, #b04ad1 0 24px, #ff8a00 24px 48px, #2ec4ff 48px 72px); }
+.desk { position: absolute; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 12px; gap: 8px; }
+.wall-label { font-size: 13px; background: rgba(0,0,0,0.35); padding: 4px 8px; border-radius: 6px; justify-self: start; }
+.browser { background: #fff; color: #172327; border-radius: 8px; align-self: center; justify-self: center; width: min(88%, 460px); padding: 10px; display: grid; gap: 8px; font-size: 13px; }
+.browser .bar { display: flex; gap: 6px; }
+.browser input { flex: 1; background: #eef3f3; border: 1px solid #c9d6d4; color: #172327; }
+.shelf { justify-self: center; display: flex; gap: 6px; background: rgba(0,0,0,0.45); padding: 6px 10px; border-radius: 99px; flex-wrap: wrap; justify-content: center; }
+.shelf span { background: rgba(255,255,255,0.9); color: #172327; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+.lock { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px; padding: 20px; background: #0d1416; }
+.lock .msg { max-width: 40ch; font-size: 15px; }
+.kiosk { position: absolute; inset: 0; background: #f4f7fb; color: #172327; display: grid; place-content: center; text-align: center; gap: 8px; padding: 16px; }
+.signin { position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; text-align: center; background: #20323a; }
+.signin .card { background: #fff; color: #172327; border-radius: 10px; padding: 16px 20px; display: grid; gap: 8px; min-width: 220px; }
+.overlay { position: fixed; inset: 0; background: rgba(8,16,18,0.55); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.dialog { background: var(--panel); border-radius: 12px; border: 1px solid var(--line); width: min(540px, 100%); max-height: 90vh; overflow: auto; padding: 18px; display: grid; gap: 12px; }
+.disclaimer { font-size: 12px; color: var(--muted); }
+@media (max-width: 760px) {
+  .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .rail { padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 10px; }
+  .nav { grid-auto-flow: column; overflow-x: auto; }
+  .nav button { white-space: nowrap; }
+  .rail-foot { display: none; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .policy { grid-template-columns: minmax(0, 1fr); }
+  .lic { margin-left: 0; }
+  .topbar, .work { padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+}
+@media (prefers-reduced-motion: no-preference) { .nav button, .btn, .tree button { transition: background 0.15s, border-color 0.15s; } }
+</style>
+<style>
+/* Plate reader policy additions */
+body { margin: 0; }
+.stepper { display: grid; gap: 12px; align-content: start; }
+.mapwrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; }
+.mapwrap svg { width: 100%; height: auto; display: block; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.stat { border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 2px; background: var(--panel); }
+.stat b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.choice { display: grid; gap: 6px; }
+.choice label { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; font-size: 14px; }
+.cmt { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 6px; background: var(--panel); }
+.cmt .who { font-size: 13px; color: var(--muted); }
+.srch td { font-size: 13px; vertical-align: top; }
+.srch td label { display: flex; gap: 4px; align-items: center; white-space: nowrap; }
+.side { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 99px; background: var(--line); color: var(--muted); }
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <a href="index.html" class="hub-back" style="color:var(--rail-ink);font-size:13px;text-decoration:underline;text-underline-offset:3px">&larr; All simulators</a><div class="brand"><b>Plate Reader Policy</b><span>Harbor View Hospital · training</span></div>
+    <nav class="nav" id="nav" aria-label="Sections"></nav>
+    <div class="rail-foot">
+      <span>Plate Reader Policy Simulator for 10-150-164 Mobile Devices. A practice tool for thinking through license plate reader policy; not a vendor product, not legal advice. Harbor View, its police department, the hospital and every person here are fictional. There is no single right answer: either recommendation can earn full credit when it's well supported.</span>
+      <button class="btn small" id="resetBtn" style="color:var(--rail-ink);background:transparent;border-color:var(--rail-muted)">Reset simulator</button>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="ctx">For <b>Harbor View Hospital board</b></div>
+      <div class="ctx">Analyst <b id="whoName"></b></div>
+      <div class="lic" id="lic"></div>
+    </header>
+    <main class="work" id="work"></main>
+  </div>
+</div>
+<div id="layer"></div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const wc = (s) => String(s || "").split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).length;
+
+  // ---------- World (illustrative numbers) ----------
+  const CAMS = [
+    { id: "main", name: "Main parking lot entrance", x: 160, y: 330, cars: 4200, sens: "Medium", note: "Patients, visitors and staff. Most traffic. Car break-ins have happened in this lot." },
+    { id: "er", name: "Emergency Department drive-up", x: 520, y: 80, cars: 900, sens: "High", note: "Emergencies, including people in crisis. Police already bring people here." },
+    { id: "clinic", name: "Outpatient clinics entrance", x: 820, y: 330, cars: 600, sens: "Very high", note: "Serves the behavioral health and addiction clinic and the women's health clinic." },
+    { id: "staff", name: "Staff parking lot gate", x: 520, y: 420, cars: 1100, sens: "Low", note: "Employees only. Security reports 11 car break-ins this year." },
+  ];
+  const CITY = { name: "City camera on Lakeview Avenue (public road)", cars: 9000, note: "The city plans this one no matter what the hospital decides. It sees cars passing the hospital, not where they turn in." };
+  const SEARCHES = [
+    { id: "s1", when: "Mon 9:12 AM", who: "Ofc. Sara Lind", agency: "city", reason: "Stolen vehicle", cat: "crime", caseNo: "26-1042", kind: "One plate", loc: "", age: 2 },
+    { id: "s2", when: "Mon 2:30 PM", who: "Det. Paul Greer", agency: "city", reason: "Missing person (Silver Alert)", cat: "alert", caseNo: "26-1050", kind: "One plate", loc: "", age: 1 },
+    { id: "s3", when: "Tue 11:05 PM", who: "Ofc. Kyle Mertz", agency: "city", reason: "Investigation", cat: "crime", caseNo: "", kind: "One plate (14th search of this same plate in 3 weeks)", loc: "", age: 3, misuse: true },
+    { id: "s4", when: "Wed 10:00 AM", who: "Det. Paul Greer", agency: "city", reason: "Homicide", cat: "crime", caseNo: "26-0988", kind: "One plate", loc: "", age: 45 },
+    { id: "s5", when: "Wed 3:15 PM", who: "Sheriff's office in another state", agency: "outstate", reason: "Reproductive health investigation", cat: "reproductive", caseNo: "OS-5531", kind: "All vehicles at a location", loc: "clinic", age: 10 },
+    { id: "s6", when: "Thu 8:40 AM", who: "Federal immigration agency", agency: "federal", reason: "Immigration enforcement", cat: "immigration", caseNo: "F-2207", kind: "One plate", loc: "", age: 5 },
+    { id: "s7", when: "Thu 1:20 PM", who: "Maple Falls Police (same state)", agency: "state", reason: "Burglary", cat: "crime", caseNo: "MF-311", kind: "One plate", loc: "", age: 3 },
+    { id: "s8", when: "Fri 9:00 AM", who: "Ofc. Sara Lind", agency: "city", reason: "Protest monitoring (nurses' rally)", cat: "protest", caseNo: "", kind: "All vehicles at a location", loc: "main", age: 1 },
+    { id: "s9", when: "Fri 4:45 PM", who: "Det. Paul Greer", agency: "city", reason: "Hit and run", cat: "crime", caseNo: "26-0870", kind: "One plate", loc: "", age: 120 },
+    { id: "s10", when: "Sat 7:30 PM", who: "Sgt. Amy Cho", agency: "city", reason: "Amber Alert", cat: "alert", caseNo: "26-1101", kind: "All vehicles at a location", loc: "main", age: 0 },
+    { id: "s11", when: "Sun 3:00 AM", who: "Lt. Frank Novak (hospital security)", agency: "hospital", reason: "Car break-in in staff lot", cat: "crime", caseNo: "HV-SEC-44", kind: "All vehicles at a location", loc: "staff", age: 1 },
+    { id: "s12", when: "Sun 11:00 AM", who: "Ofc. Kyle Mertz", agency: "city", reason: "Unpaid parking fines (bench warrant)", cat: "minor", caseNo: "26-1110", kind: "One plate", loc: "", age: 8 },
+  ];
+  const COMMENTS = [
+    { id: "c1", who: "Capt. Robert Imhoff, Harbor View Police", side: "Supports", text: "Plate readers helped us recover 23 stolen cars last year in pilot areas, and an Amber Alert hit can save a child's life in minutes. The hospital entrances are where people in crisis, and sometimes suspects, end up. We follow our department's policy and every search is logged." },
+    { id: "c2", who: "Lt. Frank Novak, hospital security", side: "Supports, with limits", text: "We've had 11 break-ins in the staff lot this year and two assaults on staff in the main lot. A camera on the staff gate would help us most. I'm less sure about the clinic entrance; that's not where our problems are." },
+    { id: "c3", who: "Karen Bauer, RN, nurses' union representative", side: "Opposes", text: "Patients already worry about being judged or reported. If people believe police are logging who visits the hospital, some will skip care, especially for addiction treatment, mental health and reproductive health. Our rally in the parking lot was legal, and I don't want our cars tracked for it." },
+    { id: "c4", who: "Darnell Price, patient advocate", side: "Opposes the clinic camera", text: "A record that your car entered the outpatient clinics entrance at 9 AM every Tuesday says a lot about your health. Even without names, that's sensitive. If cameras go up, keep them away from the clinic entrance and keep the data as short as possible." },
+    { id: "c5", who: "Regional civil liberties group", side: "Opposes", text: "Networks of these cameras let agencies in other states search local data. Reports in 2025 described searches for immigration enforcement and in an abortion-related case through shared networks, and some cities paused or canceled contracts. Tracking where people go over time without a warrant raises Fourth Amendment questions courts haven't settled." },
+    { id: "c6", who: "Linda Moreau, parent", side: "Supports", text: "When my granddaughter was taken by a relative, a plate reader in another town caught the car within an hour. I think about the families that didn't get that call. I'd want the cameras, with real rules about who can search." },
+    { id: "c7", who: "Harbor View Hospital legal counsel", side: "Neutral", text: "HIPAA generally covers health care providers and their records, not police cameras. But hosting cameras on our property is a decision about patient trust and our reputation. If we host, the agreement should spell out retention, sharing, who can search and an audit we can see. This is not legal advice for your own situation." },
+  ];
+  const PROHIBIT = [["immigration", "Immigration enforcement by itself"], ["reproductive", "Investigating reproductive health care"], ["protest", "Monitoring protests or other lawful First Amendment activity"], ["personal", "Personal use of any kind"]];
+  const HOTLISTS = [["stolen", "Stolen vehicles and plates"], ["amber", "Amber and Silver Alerts"], ["felony", "Felony warrants"], ["minor", "All warrants, including unpaid fines"], ["imm", "Federal immigration detainers"]];
+  const TRANS = [["dashboard", "Public online dashboard: number of cameras, searches and hits"], ["audit", "Yearly independent audit shared with the hospital board"], ["signs", "Signs at hospital entrances saying plate readers are in use"]];
+
+  function seed() {
+    return { v: 1, student: "", pol: { cams: { main: null, er: null, clinic: null, staff: null }, retention: null, sharing: null, federal: null, hospitalAccess: null, caseReq: null, reasonReq: null, prohibited: {}, prohibitedSet: false, hotlists: {}, hotSet: false, trans: {}, transSet: false },
+      read: {}, forArg: "", againstArg: "", marks: {}, misuse: {}, rec: "", recWhy: "", view: "home",
+      log: [{ t: stamp(), m: "Simulator started. The police department's proposal is on the Overview page." }] };
+  }
+  function stamp() { return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  const KEY = "md-alpr-sim-v1";
+  let S;
+  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+  if (!S || S.v !== 1) S = seed();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage blocked: keep working in memory */ } }
+  function log(m) { S.log.unshift({ t: stamp(), m }); if (S.log.length > 300) S.log.length = 300; }
+  let toastTimer;
+  function toast(m) { const l = $("#layer"); const o = l.querySelector(".toast"); if (o) o.remove(); const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); t.textContent = m; l.appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 3400); }
+
+  // ---------- Policy engine ----------
+  const P = () => S.pol;
+  function blockReasons(s) {
+    const p = P(), r = [];
+    if (s.loc && p.cams[s.loc] !== "allow") r.push("no hospital camera at that entrance");
+    if (p.retention != null && s.age >= p.retention) r.push(`data older than ${p.retention} day${p.retention === 1 ? "" : "s"} is already deleted`);
+    if (s.agency === "state" && p.sharing === "none") r.push("no sharing outside Harbor View PD");
+    if (s.agency === "outstate" && p.sharing !== "national") r.push("no sharing with out-of-state agencies");
+    if (s.agency === "federal" && p.federal !== "yes") r.push("federal agencies have no access");
+    if (s.agency === "hospital" && p.hospitalAccess !== "security") r.push("hospital staff have no access");
+    if (p.caseReq === "yes" && !s.caseNo) r.push("no case number");
+    if (s.cat === "minor" && !p.hotlists.minor) r.push("minor offenses aren't allowed");
+    const pm = { immigration: "immigration", reproductive: "reproductive", protest: "protest" };
+    if (pm[s.cat] && p.prohibited[pm[s.cat]]) r.push("a prohibited use");
+    return r;
+  }
+  function stats() {
+    const p = P(), on = CAMS.filter((c) => p.cams[c.id] === "allow");
+    const cars = on.reduce((a, c) => a + c.cars, 0), sens = on.filter((c) => c.sens === "High" || c.sens === "Very high").reduce((a, c) => a + c.cars, 0);
+    const days = p.retention == null ? 0 : p.retention;
+    return { on, cars, sens, stored: (cars + CITY.cars) * days, hospStored: cars * days };
+  }
+
+  // ---------- Missions ----------
+  function missions() {
+    const p = P();
+    const marksOK = SEARCHES.every((s) => S.marks[s.id] && (S.marks[s.id] === "blocked") === (blockReasons(s).length > 0));
+    const recOK = S.rec && wc(S.recWhy) >= 60 && (S.rec === "decline" ? CAMS.every((c) => p.cams[c.id] === "decline") : CAMS.some((c) => p.cams[c.id] === "allow"));
+    return [
+      { t: "Decide on each of the four hospital entrances", d: "Allow or decline a camera at each one. Look at what each entrance reveals about the people using it.", ok: CAMS.every((c) => p.cams[c.id]) },
+      { t: "Set how long plate data is kept", d: "Data on cars that aren't on any hot list. Longer keeps more leads and more records of where everyone went.", ok: p.retention != null },
+      { t: "Decide who the data is shared with", d: "Harbor View PD only, agencies in the state, or a national network. Decide separately about federal agencies and hospital security.", ok: !!(p.sharing && p.federal && p.hospitalAccess) },
+      { t: "Choose the hot lists that trigger alerts", d: "A hot list is a list of plates that alerts officers when a camera sees one.", ok: p.hotSet },
+      { t: "Set the search rules", d: "Decide whether a search needs a case number and a reason, and which uses are off-limits (choosing none is a decision too).", ok: !!(p.caseReq && p.reasonReq && p.prohibitedSet) },
+      { t: "Decide on transparency", d: "What the public and the board get to see.", ok: p.transSet },
+      { t: "Read every community comment and name the strongest argument on each side", d: "Write the strongest argument for hosting cameras and the strongest argument against, in your own words.", ok: COMMENTS.every((c) => S.read[c.id]) && wc(S.forArg) >= 15 && wc(S.againstArg) >= 15 },
+      { t: "Audit the search log against your policy", d: "Mark each search as allowed or blocked under the policy you wrote.", ok: marksOK },
+      { t: "Report the search that looks like personal misuse", d: "One search pattern looks like an officer tracking someone for personal reasons. Real departments have disciplined officers for this.", ok: !!S.misuse.s3 && SEARCHES.filter((s) => !s.misuse).every((s) => !S.misuse[s.id]) },
+      { t: "Write your recommendation to the board", d: "Host the cameras with your conditions, host only some, or decline all. At least 60 words explaining why. It has to match your entrance decisions.", ok: !!recOK },
+    ];
+  }
+
+  // ---------- Views ----------
+  const NAV = [["home", "Overview"], ["map", "Camera map"], ["retention", "Retention"], ["sharing", "Sharing"], ["rules", "Search rules"], ["audit", "Audit log"], ["community", "Community input"], ["summary", "Policy summary"], ["missions", "Checklist"], ["log", "Activity log"], ["report", "Submit report"]];
+  function renderNav() {
+    const ms = missions(), done = ms.filter((m) => m.ok).length;
+    const counts = { missions: `${done}/${ms.length}`, community: `${COMMENTS.filter((c) => S.read[c.id]).length}/${COMMENTS.length}`, audit: SEARCHES.length };
+    $("#nav").innerHTML = NAV.map(([v, l]) => `<button data-view="${v}" ${S.view === v ? 'aria-current="page"' : ""}><span>${l}</span>${counts[v] != null ? `<span class="count">${counts[v]}</span>` : ""}</button>`).join("");
+    $("#whoName").textContent = S.student || "Student";
+    $("#lic").innerHTML = `Checklist ${done} of ${ms.length}<span class="meter"><i style="width:${Math.round((done / ms.length) * 100)}%"></i></span>`;
+  }
+  function statsHTML() {
+    const st = stats(), p = P();
+    return `<div class="stats"><div class="stat"><b>${st.on.length} of 4</b><span>Hospital entrances with cameras</span></div><div class="stat"><b>${st.cars.toLocaleString()}</b><span>Cars recorded per day at hospital entrances</span></div><div class="stat"><b>${st.sens.toLocaleString()}</b><span>Of those, at high-sensitivity entrances</span></div><div class="stat"><b>${p.retention == null ? "Not set" : st.hospStored.toLocaleString()}</b><span>Hospital-entrance records stored at any time</span></div></div><p class="hint">Numbers are illustrative, for comparing choices.</p>`;
+  }
+  function vHome() {
+    return `<div><h1>Overview</h1><p class="sub">The City of Harbor View is building a network of automated license plate reader (ALPR) cameras. The police department has asked to put cameras at the hospital's entrances. The hospital board wants a recommendation, and a policy it could insist on if it says yes.</p></div>
+      <div class="ticket"><b>Message from Monica Reyes, facilities director</b><span>"The board meets in two weeks. Some members think the cameras will make our lots safer and help find missing people. Others worry patients will stop trusting us. I need you to work through every decision: which entrances, how long data is kept, who can search it and for what. Read what people in the community said, audit the sample search log the department shared, and give us your honest recommendation. Either answer is fine if you can defend it."</span></div>
+      <div class="panel"><h2>How plate readers work</h2><p class="hint">A camera photographs every passing plate. Software reads the characters and records the plate, time, place and a photo of the car. Each read is checked against hot lists (like stolen cars) and saved in a database that authorized users can search later. In shared networks, agencies elsewhere can search it too, depending on the rules.</p></div>
+      ${statsHTML()}
+      <div class="panel"><h2>Recent activity</h2>${logHTML(5)}</div>`;
+  }
+  function mapSVG() {
+    const p = P();
+    return `<svg viewBox="0 0 1000 480" role="img" aria-label="Map of the hospital with four entrances and a city road camera">
+      <rect width="1000" height="480" fill="#eef3f2"/>
+      <rect x="0" y="0" width="1000" height="40" fill="#b9b2a5"/><text x="20" y="27" font-size="20" fill="#3d3a33">Lakeview Avenue (public road)</text>
+      <rect x="300" y="120" width="440" height="230" fill="#dfe8f5" stroke="#12343b" stroke-width="4"/><text x="430" y="240" font-size="28" fill="#2b4f86" font-weight="700">Harbor View Hospital</text>
+      <rect x="40" y="250" width="220" height="180" fill="#ffffff" stroke="#9aa" stroke-width="2"/><text x="60" y="420" font-size="18" fill="#5a503f">Main parking lot</text>
+      <rect x="400" y="380" width="240" height="90" fill="#ffffff" stroke="#9aa" stroke-width="2"/><text x="420" y="460" font-size="18" fill="#5a503f">Staff lot</text>
+      <rect x="760" y="250" width="200" height="180" fill="#ffffff" stroke="#9aa" stroke-width="2"/><text x="770" y="420" font-size="18" fill="#5a503f">Clinic parking</text>
+      <g><rect x="880" y="10" width="40" height="22" rx="4" fill="#5a503f"/><text x="760" y="70" font-size="16" fill="#3d3a33">City camera</text></g>
+      ${CAMS.map((c) => { const v = p.cams[c.id]; const col = v === "allow" ? "#0e7c7b" : v === "decline" ? "#b5482f" : "#999"; return `<g><circle cx="${c.x}" cy="${c.y}" r="22" fill="${col}" stroke="#fff" stroke-width="4"/><text x="${c.x}" y="${c.y + 6}" font-size="16" fill="#fff" text-anchor="middle" font-weight="700">${v === "allow" ? "ON" : v === "decline" ? "NO" : "?"}</text></g>`; }).join("")}
+    </svg>`;
+  }
+  function vMap() {
+    const p = P();
+    return `<div><h1>Camera map</h1><p class="sub">Decide entrance by entrance. Teal means you'd allow a camera, red means you'd decline, gray is undecided.</p></div>
+      <div class="grid2" style="grid-template-columns:minmax(0,1.3fr) minmax(260px,1fr)"><div class="mapwrap">${mapSVG()}</div>
+      <div class="stepper">${CAMS.map((c) => `<div class="panel"><h2>${c.name}</h2><p class="hint">${c.note} About ${c.cars.toLocaleString()} cars a day. Sensitivity: <b>${c.sens}</b>.</p><div class="row"><label><input type="radio" name="cam-${c.id}" data-cam="${c.id}" value="allow" ${p.cams[c.id] === "allow" ? "checked" : ""}> Allow</label><label><input type="radio" name="cam-${c.id}" data-cam="${c.id}" value="decline" ${p.cams[c.id] === "decline" ? "checked" : ""}> Decline</label></div></div>`).join("")}
+      <div class="panel"><h2>${CITY.name}</h2><p class="hint">${CITY.note}</p></div></div></div>${statsHTML()}`;
+  }
+  const radios = (name, key, opts) => `<div class="choice">${opts.map(([v, l]) => `<label><input type="radio" name="${name}" data-pol="${key}" value="${v}" ${String(P()[key]) === String(v) ? "checked" : ""}><span>${l}</span></label>`).join("")}</div>`;
+  function vRetention() {
+    return `<div><h1>Retention</h1><p class="sub">How long to keep reads of cars that aren't on any hot list. Reads that match a hot list become part of a case file and follow the rules for evidence.</p></div>
+      <div class="panel">${radios("ret", "retention", [[1, "24 hours"], [7, "7 days"], [30, "30 days (a common vendor default)"], [90, "90 days"], [365, "1 year"]])}
+      <p class="hint">Some states set legal limits on retention, from minutes to years. Longer retention helps solve older crimes and also builds a longer record of where everyone went.</p></div>${statsHTML()}`;
+  }
+  function vSharing() {
+    return `<div><h1>Sharing</h1><p class="sub">Who besides Harbor View PD can search the data from cameras on hospital property?</p></div>
+      <div class="panel"><h2>Other police agencies</h2>${radios("shr", "sharing", [["none", "Nobody outside Harbor View PD"], ["state", "Police agencies in this state"], ["national", "Any agency in the vendor's national network"]])}</div>
+      <div class="panel"><h2>Federal agencies, including immigration enforcement</h2>${radios("fed", "federal", [["yes", "Allowed"], ["no", "Not allowed"]])}</div>
+      <div class="panel"><h2>Hospital security</h2>${radios("hacc", "hospitalAccess", [["security", "Hospital security can search data from hospital cameras, logged like police searches"], ["none", "No hospital access to the data"]])}</div>`;
+  }
+  const checks = (cls, list, obj) => `<div class="choice">${list.map(([k, l]) => `<label><input type="checkbox" class="${cls}" value="${k}" ${obj[k] ? "checked" : ""}><span>${l}</span></label>`).join("")}</div>`;
+  function vRules() {
+    const p = P();
+    return `<div><h1>Search rules</h1><p class="sub">The rules for when someone may search the database, and the alerts the cameras raise automatically.</p></div>
+      <div class="panel"><h2>Case number</h2>${radios("cr", "caseReq", [["yes", "Every search needs a case or incident number"], ["no", "Not required"]])}</div>
+      <div class="panel"><h2>Reason</h2>${radios("rr", "reasonReq", [["yes", "Every search needs a written reason"], ["no", "Not required"]])}</div>
+      <div class="panel"><h2>Off-limits uses</h2>${checks("prh", PROHIBIT, p.prohibited)}<div><button class="btn small primary" id="saveProh">Save off-limits uses</button>${p.prohibitedSet ? ' <span class="pill good">Saved</span>' : ""}</div></div>
+      <div class="panel"><h2>Hot lists</h2>${checks("hot", HOTLISTS, p.hotlists)}<p class="hint">"All warrants, including unpaid fines" also decides whether officers may search for minor offenses.</p><div><button class="btn small primary" id="saveHot">Save hot lists</button>${p.hotSet ? ' <span class="pill good">Saved</span>' : ""}</div></div>
+      <div class="panel"><h2>Transparency</h2>${checks("trn", TRANS, p.trans)}<div><button class="btn small primary" id="saveTrans">Save transparency</button>${p.transSet ? ' <span class="pill good">Saved</span>' : ""}</div></div>`;
+  }
+  function vAudit() {
+    return `<div><h1>Audit log</h1><p class="sub">The police department shared a sample week of searches from a similar network. For each one, decide whether <b>your policy as written</b> would allow it or block it. Then report anything that looks like misuse.</p></div>
+      <div class="tablewrap"><table class="srch"><thead><tr><th>When</th><th>Who</th><th>Reason</th><th>Case #</th><th>Search</th><th>Data age</th><th>Under your policy</th><th>Misuse?</th></tr></thead><tbody>
+      ${SEARCHES.map((s) => { const m = S.marks[s.id];
+        return `<tr><td class="mono">${s.when}</td><td>${esc(s.who)}</td><td>${esc(s.reason)}</td><td class="mono">${s.caseNo || "—"}</td><td>${esc(s.kind)}${s.loc ? `<br><span class="hint">${CAMS.find((c) => c.id === s.loc).name}</span>` : ""}</td><td>${s.age} day${s.age === 1 ? "" : "s"}</td>
+          <td><label><input type="radio" name="m-${s.id}" data-mark="${s.id}" value="allowed" ${m === "allowed" ? "checked" : ""}>Allowed</label><label><input type="radio" name="m-${s.id}" data-mark="${s.id}" value="blocked" ${m === "blocked" ? "checked" : ""}>Blocked</label></td>
+          <td><label><input type="checkbox" data-misuse="${s.id}" ${S.misuse[s.id] ? "checked" : ""}>Report</label></td></tr>`; }).join("")}
+      </tbody></table></div><div class="row"><button class="btn primary" id="checkAudit">Check my audit</button><span id="auditOut" class="hint"></span></div><p class="hint">The check tells you how many marks don't match your policy, not which ones. If you change your policy later, re-check.</p>`;
+  }
+  function vCommunity() {
+    return `<div><h1>Community input</h1><p class="sub">Comments the board received. Read each one, then write the strongest argument on each side in your own words.</p></div>
+      ${COMMENTS.map((c) => `<div class="cmt"><div class="who"><b>${esc(c.who)}</b> <span class="side">${c.side}</span></div><p>${esc(c.text)}</p><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-read="${c.id}" ${S.read[c.id] ? "checked" : ""}>I've read this</label></div>`).join("")}
+      <div class="panel"><label for="forArg"><b>Strongest argument FOR hosting cameras</b> (at least 15 words)</label><textarea id="forArg" rows="3">${esc(S.forArg)}</textarea>
+      <label for="againstArg"><b>Strongest argument AGAINST hosting cameras</b> (at least 15 words)</label><textarea id="againstArg" rows="3">${esc(S.againstArg)}</textarea><div><button class="btn primary" id="saveArgs">Save arguments</button></div></div>`;
+  }
+  function policyLines() {
+    const p = P(), on = (o) => Object.entries(o).filter(([, v]) => v).map(([k]) => k);
+    return [
+      `Entrances: ${CAMS.map((c) => `${c.name} ${p.cams[c.id] || "undecided"}`).join("; ")}`,
+      `Retention: ${p.retention == null ? "not set" : p.retention + " days"}`,
+      `Sharing: ${p.sharing || "not set"}; federal ${p.federal || "not set"}; hospital access ${p.hospitalAccess || "not set"}`,
+      `Searches: case number ${p.caseReq || "not set"}; reason ${p.reasonReq || "not set"}; off-limits: ${p.prohibitedSet ? (on(p.prohibited).join(", ") || "none") : "not set"}`,
+      `Hot lists: ${p.hotSet ? (on(p.hotlists).join(", ") || "none") : "not set"}`,
+      `Transparency: ${p.transSet ? (on(p.trans).join(", ") || "none") : "not set"}`,
+    ];
+  }
+  function vSummary() {
+    return `<div><h1>Policy summary</h1><p class="sub">Your policy, as the board will see it, and your recommendation.</p></div>
+      <div class="panel"><pre class="mono" style="margin:0;white-space:pre-wrap;font-size:13px">${esc(policyLines().join("\n"))}</pre></div>
+      <div class="panel"><h2>Recommendation</h2><div class="choice">${[["host", "Host cameras with the conditions in this policy"], ["some", "Host cameras at only some entrances, with these conditions"], ["decline", "Decline all cameras on hospital property"]].map(([k, l]) => `<label><input type="radio" name="rec" value="${k}" ${S.rec === k ? "checked" : ""}><span>${l}</span></label>`).join("")}</div>
+      <label for="recWhy"><b>Why</b> (at least 60 words; ${wc(S.recWhy)} so far)</label><textarea id="recWhy" rows="6">${esc(S.recWhy)}</textarea><div><button class="btn primary" id="saveRec">Save recommendation</button></div></div>`;
+  }
+  function vMissions() {
+    const ms = missions();
+    return `<div><h1>Checklist</h1><p class="sub">These check that you made and explained every decision, and applied your own policy correctly. They don't check which side you chose.</p></div>
+      <div class="panel">${ms.map((m, i) => `<div class="mission"><span class="check ${m.ok ? "done" : "todo"}">${m.ok ? "✓" : i + 1}</span><div><b>${m.t}</b><p class="hint">${m.d}</p></div></div>`).join("")}</div>`;
+  }
+  function logHTML(n) { return `<div class="log">${S.log.slice(0, n).map((l) => `<div><time>${l.t}</time><span>${esc(l.m)}</span></div>`).join("")}</div>`; }
+  function vLog() { return `<div><h1>Activity log</h1><p class="sub">Every decision you made, newest first.</p></div><div class="panel">${logHTML(300)}</div>`; }
+  function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).toUpperCase().padStart(7, "0"); }
+  function reportText() {
+    const ms = missions(), st = stats();
+    const body = [
+      "Plate Reader Policy Simulator report (Harbor View Hospital)",
+      `Analyst: ${S.student || "(name not entered)"}`,
+      `Generated: ${new Date().toLocaleString()}`,
+      `Checklist: ${ms.filter((m) => m.ok).length} of ${ms.length} complete`,
+      ...ms.map((m) => `  [${m.ok ? "x" : " "}] ${m.t}`),
+      "", "Policy:", ...policyLines().map((l) => "  " + l),
+      `Illustrative impact: ${st.cars} cars/day at hospital entrances (${st.sens} at high-sensitivity entrances); ${S.pol.retention == null ? "retention not set" : st.hospStored + " hospital-entrance records stored at a time"}`,
+      "", "Audit:", ...SEARCHES.map((s) => `  ${s.when} ${s.who}: marked ${S.marks[s.id] || "-"}; policy ${blockReasons(s).length ? "blocks (" + blockReasons(s).join("; ") + ")" : "allows"}${S.misuse[s.id] ? "; REPORTED AS MISUSE" : ""}`),
+      "", `Strongest argument for: ${S.forArg || "(not written)"}`,
+      `Strongest argument against: ${S.againstArg || "(not written)"}`,
+      `Recommendation: ${{ host: "Host with conditions", some: "Host at some entrances", decline: "Decline all" }[S.rec] || "(none)"}`,
+      `Why: ${S.recWhy || "(not written)"}`,
+      "", `Changes logged: ${S.log.length}`,
+    ].join("\n");
+    return body + `\nVerification code: ${hash((S.student || "") + "|" + body.replace(/Generated: .*\n/, ""))}`;
+  }
+  function vReport() {
+    return `<div><h1>Submit report</h1><p class="sub">Enter your name, then copy this report into your Solve It submission. The verification code changes whenever your policy, writing or name changes.</p></div>
+      <div class="panel"><div class="row"><label for="stuName">Your name</label><input type="text" id="stuName" value="${esc(S.student)}" placeholder="First and last name"><button class="btn primary" id="saveName">Save name</button></div></div>
+      <div class="panel"><div class="row" style="justify-content:space-between"><h2>Policy report</h2><button class="btn" id="copyRep">Copy report</button></div>
+      <div class="tablewrap" style="border:none"><pre class="mono" id="repText" style="margin:0;white-space:pre-wrap;font-size:13px">${esc(reportText())}</pre></div></div>`;
+  }
+  function render() {
+    renderNav();
+    const v = { home: vHome, map: vMap, retention: vRetention, sharing: vSharing, rules: vRules, audit: vAudit, community: vCommunity, summary: vSummary, missions: vMissions, log: vLog, report: vReport }[S.view] || vHome;
+    $("#work").innerHTML = v();
+    save();
+  }
+  const boxes = (cls) => Object.fromEntries([...document.querySelectorAll("." + cls)].map((x) => [x.value, x.checked]));
+
+  // ---------- Events ----------
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button"); if (!t || t.disabled) return;
+    if (t.dataset.view) { S.view = t.dataset.view; render(); return; }
+    switch (t.id) {
+      case "resetBtn": $("#layer").innerHTML = `<div class="overlay"><div class="dialog" role="dialog" aria-modal="true"><h2>Reset the simulator?</h2><p>This erases your policy, writing and log.</p><div class="row" style="justify-content:flex-end"><button class="btn" id="rsCancel">Keep my work</button><button class="btn danger" id="rsGo">Reset</button></div></div></div>`; break;
+      case "rsCancel": $("#layer").innerHTML = ""; break;
+      case "rsGo": S = seed(); $("#layer").innerHTML = ""; render(); toast("Simulator reset."); break;
+      case "saveProh": P().prohibited = boxes("prh"); P().prohibitedSet = true; log(`Off-limits uses: ${Object.entries(P().prohibited).filter(([, v]) => v).map(([k]) => k).join(", ") || "none"}.`); render(); toast("Saved."); break;
+      case "saveHot": P().hotlists = boxes("hot"); P().hotSet = true; log(`Hot lists: ${Object.entries(P().hotlists).filter(([, v]) => v).map(([k]) => k).join(", ") || "none"}.`); render(); toast("Saved."); break;
+      case "saveTrans": P().trans = boxes("trn"); P().transSet = true; log(`Transparency: ${Object.entries(P().trans).filter(([, v]) => v).map(([k]) => k).join(", ") || "none"}.`); render(); toast("Saved."); break;
+      case "checkAudit": { const marked = SEARCHES.filter((x) => S.marks[x.id]).length, wrong = SEARCHES.filter((x) => S.marks[x.id] && (S.marks[x.id] === "blocked") !== (blockReasons(x).length > 0)).length;
+        $("#auditOut").textContent = marked < SEARCHES.length ? `${SEARCHES.length - marked} search${SEARCHES.length - marked === 1 ? "" : "es"} not marked yet. ` + (wrong ? `${wrong} of your marks don't match your policy.` : "") : wrong ? `${wrong} of ${SEARCHES.length} marks don't match your policy. Re-read your rules: case numbers, retention, sharing and off-limits uses.` : "All 12 marks match your policy.";
+        log(`Checked the audit: ${wrong} mismatches, ${SEARCHES.length - marked} unmarked.`); save(); renderNav(); break; }
+      case "saveArgs": S.forArg = $("#forArg").value.trim(); S.againstArg = $("#againstArg").value.trim(); log(`Saved strongest arguments (${wc(S.forArg)} and ${wc(S.againstArg)} words).`); render(); toast("Arguments saved."); break;
+      case "saveRec": { const r = document.querySelector('input[name="rec"]:checked'); S.rec = r ? r.value : ""; S.recWhy = $("#recWhy").value.trim(); log(`Recommendation saved: ${S.rec || "none"} (${wc(S.recWhy)} words).`); render();
+        const p = P(); if (S.rec === "decline" && CAMS.some((c) => p.cams[c.id] === "allow")) toast("Your camera map still allows some cameras. Make them match.");
+        else if (S.rec && S.rec !== "decline" && !CAMS.some((c) => p.cams[c.id] === "allow")) toast("Your camera map declines every entrance. Make them match.");
+        else toast("Recommendation saved."); break; }
+      case "saveName": S.student = $("#stuName").value.trim(); log(`Analyst name set to "${S.student}".`); render(); toast("Name saved."); break;
+      case "copyRep": { const txt = $("#repText").textContent; const fb = () => { const r = document.createRange(); r.selectNodeContents($("#repText")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Report selected. Press Ctrl + C (or Cmd + C) to copy."); };
+        try { navigator.clipboard.writeText(txt).then(() => toast("Report copied."), fb); } catch (err) { fb(); } break; }
+    }
+  });
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.dataset.cam) { P().cams[t.dataset.cam] = t.value; log(`${CAMS.find((c) => c.id === t.dataset.cam).name}: ${t.value}.`); render(); }
+    else if (t.dataset.pol) { const k = t.dataset.pol; P()[k] = k === "retention" ? Number(t.value) : t.value; log(`Policy: ${k} = ${t.value}.`); render(); }
+    else if (t.dataset.mark) { S.marks[t.dataset.mark] = t.value; render(); }
+    else if (t.dataset.misuse) { S.misuse[t.dataset.misuse] = t.checked; const s = SEARCHES.find((x) => x.id === t.dataset.misuse); log(`${t.checked ? "Reported" : "Un-reported"} ${s.when} search by ${s.who} as possible misuse.`); render(); }
+    else if (t.dataset.read) { S.read[t.dataset.read] = t.checked; render(); }
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("#layer .overlay")) $("#layer").innerHTML = ""; });
+  render();
+})();
+</script>
+
+</body>
+</html>

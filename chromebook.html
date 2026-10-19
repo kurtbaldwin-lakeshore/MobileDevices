@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} body{margin:0} [hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Chromebook Management Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a console shell. Left rail of sections, top context bar (org unit + licenses), work area on the right. Collapses to a top tab strip on phones. */
+:root {
+  --bg: #f3f6f6; --panel: #ffffff; --ink: #172327; --muted: #5b6b70; --line: #d6e1df;
+  --accent: #0e7c7b; --accent-ink: #ffffff; --accent-soft: #e2f1f0; --amber: #e8a33d; --amber-soft: #fbefdb;
+  --good: #2e7d4f; --good-soft: #e3f3e8; --warn: #9a6200; --warn-soft: #fff3d6; --bad: #b5482f; --bad-soft: #f9e3dd;
+  --rail: #12343b; --rail-ink: #e8f1f0; --rail-muted: #9fb7b5;
+  --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.45; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.mono { font-family: var(--font-mono); font-size: 0.9em; }
+.shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100%; }
+.rail { background: var(--rail); color: var(--rail-ink); padding-block: 18px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; display: flex; flex-direction: column; gap: 18px; }
+.brand { display: grid; gap: 2px; }
+.brand b { font-size: 17px; letter-spacing: 0.01em; }
+.brand span { color: var(--rail-muted); font-size: 12px; }
+.nav { display: grid; gap: 2px; }
+.nav button { all: unset; cursor: pointer; padding: 8px 10px; border-radius: 6px; color: var(--rail-ink); display: flex; justify-content: space-between; gap: 8px; }
+.nav button:hover { background: rgba(255,255,255,0.07); }
+.nav button[aria-current="page"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.nav button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.nav .count { font-family: var(--font-mono); font-size: 12px; opacity: 0.85; }
+.rail-foot { margin-top: auto; color: var(--rail-muted); font-size: 12px; display: grid; gap: 8px; }
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding-block: 12px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--panel); border-bottom: 1px solid var(--line); }
+.topbar .ctx { color: var(--muted); font-size: 13px; }
+.topbar .ctx b { color: var(--ink); }
+.lic { margin-left: auto; display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+.meter { width: 120px; height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.work { padding-block: 20px 40px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; align-content: start; }
+h1 { font-size: 24px; margin: 0; text-wrap: balance; }
+h2 { font-size: 17px; margin: 0; }
+p { margin: 0; }
+.sub { color: var(--muted); max-width: 70ch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 4px; }
+.tile .n { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile .l { color: var(--muted); font-size: 13px; }
+.btn { cursor: pointer; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 12px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.small { padding: 3px 8px; font-size: 13px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+input[type=text], select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+textarea { width: 100%; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tree { display: grid; gap: 2px; }
+.tree button { all: unset; cursor: pointer; padding: 5px 8px; border-radius: 6px; display: flex; gap: 6px; align-items: center; }
+.tree button:hover { background: var(--accent-soft); }
+.tree button[aria-selected="true"] { background: var(--accent-soft); font-weight: 700; box-shadow: inset 3px 0 0 var(--accent); }
+.tree button:focus-visible { outline: 2px solid var(--amber); }
+.tree .twig { color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: pre; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--accent-soft); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: none; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.mute { background: var(--line); color: var(--muted); }
+.policy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 300px); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.policy:last-child { border-bottom: none; }
+.policy .help { color: var(--muted); font-size: 13px; }
+.src { font-size: 12px; color: var(--muted); }
+.src.local { color: var(--accent); font-weight: 700; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { all: unset; cursor: pointer; padding: 8px 12px; border-bottom: 3px solid transparent; }
+.tabs button[aria-selected="true"] { border-color: var(--accent); font-weight: 700; }
+.tabs button:focus-visible { outline: 2px solid var(--amber); }
+.mission { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.mission:last-child { border-bottom: none; }
+.check { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.check.done { background: var(--good); color: var(--panel); }
+.check.todo { border: 2px solid var(--line); color: var(--muted); }
+.hint { color: var(--muted); font-size: 13px; }
+.ticket { background: var(--amber-soft); border: 1px solid var(--amber); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 4px; }
+.ticket b { color: var(--ink); }
+.log { display: grid; gap: 0; }
+.log div { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.log time { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.notice { border-radius: var(--r); padding: 10px 12px; font-size: 14px; }
+.notice.bad { background: var(--bad-soft); color: var(--bad); }
+.notice.good { background: var(--good-soft); color: var(--good); }
+.notice.info { background: var(--accent-soft); color: var(--ink); }
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--rail); color: var(--rail-ink); padding: 10px 14px; border-radius: var(--r); box-shadow: 0 6px 24px rgba(0,0,0,0.25); max-width: min(360px, calc(100vw - 32px)); }
+/* Chromebook preview */
+.laptop { width: 100%; max-width: 640px; }
+.screen { aspect-ratio: 16 / 10; max-width: 100%; border: 10px solid #1e2427; border-radius: 12px 12px 4px 4px; position: relative; overflow: hidden; background: #24343a; color: #fff; }
+.base { height: 14px; background: #2c3438; border-radius: 0 0 14px 14px; margin: 0 -4%; }
+.wall-school { background: radial-gradient(circle at 30% 30%, #1b8f8c, #0b3d42 70%); }
+.wall-free { background: repeating-linear-gradient(45deg, #b04ad1 0 24px, #ff8a00 24px 48px, #2ec4ff 48px 72px); }
+.desk { position: absolute; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 12px; gap: 8px; }
+.wall-label { font-size: 13px; background: rgba(0,0,0,0.35); padding: 4px 8px; border-radius: 6px; justify-self: start; }
+.browser { background: #fff; color: #172327; border-radius: 8px; align-self: center; justify-self: center; width: min(88%, 460px); padding: 10px; display: grid; gap: 8px; font-size: 13px; }
+.browser .bar { display: flex; gap: 6px; }
+.browser input { flex: 1; background: #eef3f3; border: 1px solid #c9d6d4; color: #172327; }
+.shelf { justify-self: center; display: flex; gap: 6px; background: rgba(0,0,0,0.45); padding: 6px 10px; border-radius: 99px; flex-wrap: wrap; justify-content: center; }
+.shelf span { background: rgba(255,255,255,0.9); color: #172327; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+.lock { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px; padding: 20px; background: #0d1416; }
+.lock .msg { max-width: 40ch; font-size: 15px; }
+.kiosk { position: absolute; inset: 0; background: #f4f7fb; color: #172327; display: grid; place-content: center; text-align: center; gap: 8px; padding: 16px; }
+.signin { position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; text-align: center; background: #20323a; }
+.signin .card { background: #fff; color: #172327; border-radius: 10px; padding: 16px 20px; display: grid; gap: 8px; min-width: 220px; }
+.overlay { position: fixed; inset: 0; background: rgba(8,16,18,0.55); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.dialog { background: var(--panel); border-radius: 12px; border: 1px solid var(--line); width: min(540px, 100%); max-height: 90vh; overflow: auto; padding: 18px; display: grid; gap: 12px; }
+.disclaimer { font-size: 12px; color: var(--muted); }
+@media (max-width: 760px) {
+  .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .rail { padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 10px; }
+  .nav { grid-auto-flow: column; overflow-x: auto; }
+  .nav button { white-space: nowrap; }
+  .rail-foot { display: none; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .policy { grid-template-columns: minmax(0, 1fr); }
+  .lic { margin-left: 0; }
+  .topbar, .work { padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+}
+@media (prefers-reduced-motion: no-preference) { .nav button, .btn, .tree button { transition: background 0.15s, border-color 0.15s; } }
+</style>
+
+<div class="shell">
+  <aside class="rail">
+    <a href="index.html" class="hub-back" style="color:var(--rail-ink);font-size:13px;text-decoration:underline;text-underline-offset:3px">&larr; All simulators</a><div class="brand"><b>Device Console</b><span>Lakeview School District · training</span></div>
+    <nav class="nav" id="nav" aria-label="Sections"></nav>
+    <div class="rail-foot">
+      <span>Chromebook Management Simulator for 10-150-164 Mobile Devices. A practice tool modeled on cloud device consoles; not affiliated with or made by Google.</span>
+      <button class="btn small" id="resetBtn" style="color:var(--rail-ink);background:transparent;border-color:var(--rail-muted)">Reset simulator</button>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="ctx">Organization <b>Lakeview Middle School</b></div>
+      <div class="ctx" id="whoCtx"></div>
+      <div class="lic" id="lic"></div>
+    </header>
+    <main class="work" id="work"></main>
+  </div>
+</div>
+<div id="layer"></div>
+
+<script>
+(() => {
+  // ---------- Catalog data ----------
+  const ROOT = "ou-root";
+  const POLICIES = [
+    { key: "guestMode", label: "Guest mode", cat: "device", type: "select", options: ["Allow guest mode", "Block guest mode"], def: "Allow guest mode", help: "Guest sessions skip all user policies and leave no trace." },
+    { key: "signinRestrict", label: "Sign-in restriction", cat: "device", type: "select", options: ["Any account can sign in", "Only @lakeview.example accounts"], def: "Any account can sign in", help: "Limit who can sign in to these devices." },
+    { key: "forcedReenroll", label: "Forced re-enrollment", cat: "device", type: "select", options: ["Off", "Re-enroll automatically after a wipe"], def: "Off", help: "If a device is wiped (Powerwash), it rejoins the school's organization instead of becoming a free, unmanaged laptop." },
+    { key: "devMode", label: "Developer mode", cat: "device", type: "select", options: ["Allow developer mode", "Block developer mode"], def: "Allow developer mode", help: "Developer mode turns off security checks and can bypass management." },
+    { key: "autoUpdate", label: "Automatic updates", cat: "device", type: "select", options: ["Update automatically", "Pin to current version (testing week only)"], def: "Update automatically", help: "Keep devices patched. Pin only for a short testing window, then unpin." },
+    { key: "screenLock", label: "Lock screen when idle", cat: "device", type: "select", options: ["Never", "After 10 minutes", "After 5 minutes"], def: "Never", help: "Protects a signed-in session left on a desk." },
+    { key: "incognito", label: "Incognito mode", cat: "user", type: "select", options: ["Allow incognito", "Block incognito"], def: "Allow incognito", help: "Incognito windows don't keep history and can dodge some extensions." },
+    { key: "wallpaper", label: "Wallpaper", cat: "user", type: "select", options: ["Users choose their own", "Force school wallpaper"], def: "Users choose their own", help: "Force a school image so it can't be changed." },
+    { key: "safeSearch", label: "SafeSearch for web search", cat: "user", type: "select", options: ["Off", "Strict"], def: "Off", help: "Filters explicit results from search pages." },
+    { key: "extInstall", label: "Extension installs", cat: "user", type: "select", options: ["Users can install any extension", "Only extensions allowed by the school"], def: "Users can install any extension", help: "Stops students adding their own extensions, such as proxy or VPN tools." },
+    { key: "blocklist", label: "Blocked URLs", cat: "user", type: "list", def: "", help: "One per line. Use a domain (games.example) or a wildcard (*game*)." },
+    { key: "allowlist", label: "Allowed URLs (exceptions)", cat: "user", type: "list", def: "", help: "Allowed even if a blocked pattern matches. One per line." },
+  ];
+  const APPS = [
+    { id: "portal", name: "Class Portal", kind: "Web app", note: "Assignments and grades" },
+    { id: "typing", name: "Typing Tutor", kind: "Web app", note: "Keyboarding practice" },
+    { id: "mathlab", name: "Math Lab", kind: "Android app", note: "Practice problems" },
+    { id: "reader", name: "Accessible Reader", kind: "Extension", note: "Read-aloud and dyslexia font" },
+    { id: "gradebook", name: "Teacher Gradebook", kind: "Web app", note: "Teachers only" },
+    { id: "proxyvpn", name: "Proxy Unblocker VPN", kind: "Extension", note: "Bypasses web filters" },
+    { id: "snake", name: "Slither Snake Game", kind: "Extension", note: "Game" },
+    { id: "statetest", name: "State Test (kiosk app)", kind: "Kiosk app", note: "Runs full screen for testing" },
+  ];
+  const MODELS = [
+    { m: "EduBook 11 Rugged", aue: "2034-06" }, { m: "EduBook 14 Touch", aue: "2033-06" }, { m: "Spark C100 (older)", aue: "2026-06" },
+  ];
+  const LABELS = [
+    ["Cart 6A", 5], ["Cart 7B", 5], ["Cart 8A", 5], ["Teacher - Rm 112", 2], ["Teacher - Rm 207", 2], ["Testing cart T1", 3], ["Front office", 2],
+  ];
+  const STOLEN = "LMS-7B-0142";
+
+  function seed() {
+    const ous = [
+      { id: ROOT, name: "Lakeview Middle School", parent: null },
+      { id: "ou-students", name: "Students", parent: ROOT },
+      { id: "ou-teachers", name: "Teachers", parent: ROOT },
+      { id: "ou-staff", name: "Staff", parent: ROOT },
+    ];
+    const devices = [];
+    let n = 100;
+    LABELS.forEach(([label, count], li) => {
+      for (let i = 0; i < count; i++) {
+        n += 7;
+        const code = label.startsWith("Cart") ? label.slice(5) : label.startsWith("Teacher") ? "TC" : label.startsWith("Testing") ? "T1" : "OF";
+        const model = MODELS[(li + i) % MODELS.length];
+        devices.push({ serial: `LMS-${code}-0${n}`, model: model.m, aue: model.aue, label, status: "provisioned", ou: ROOT, assetId: "", location: "", lastSync: "Today 7:4" + (i % 10), msg: "" });
+      }
+    });
+    const boxes = [
+      { serial: "LMS-6A-0901", model: "EduBook 11 Rugged", aue: "2034-06", label: "Cart 6A", status: "unenrolled" },
+      { serial: "LMS-8A-0902", model: "EduBook 11 Rugged", aue: "2034-06", label: "Cart 8A", status: "unenrolled" },
+      { serial: "LMS-T1-0903", model: "EduBook 14 Touch", aue: "2033-06", label: "Testing cart T1", status: "unenrolled" },
+      { serial: "LMS-TC-0904", model: "EduBook 14 Touch", aue: "2033-06", label: "Teacher - Rm 207", status: "unenrolled", otherOrg: true },
+    ].map((b) => Object.assign(b, { ou: null, assetId: "", location: "", lastSync: "Never", msg: "" }));
+    return {
+      v: 1, student: "", ous, devices: devices.concat(boxes),
+      pol: { [ROOT]: {} }, apps: { [ROOT]: {} }, kiosk: {},
+      licenses: 32, log: [{ t: stamp(), m: "Simulator started. 24 devices are enrolled but unsorted in the top-level org unit; 4 new devices are still in their boxes." }],
+      selOU: "ou-students", view: "home", setTab: "device", previewSerial: STOLEN, previewUrl: "freegames.example",
+    };
+  }
+  function stamp() { const d = new Date(); return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+
+  // ---------- State + storage ----------
+  const KEY = "md-chromebook-sim-v1";
+  let S;
+  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+  if (!S || S.v !== 1) S = seed();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage blocked: keep working in memory */ } }
+  function log(m) { S.log.unshift({ t: stamp(), m }); if (S.log.length > 300) S.log.length = 300; }
+
+  // ---------- Model helpers ----------
+  const ouById = (id) => S.ous.find((o) => o.id === id);
+  const children = (id) => S.ous.filter((o) => o.parent === id);
+  const pathTo = (id) => { const p = []; let o = ouById(id); while (o) { p.unshift(o); o = ouById(o.parent); } return p; };
+  const ouName = (id) => (id ? (ouById(id) || {}).name || "(deleted)" : "Not enrolled");
+  const findOU = (name) => S.ous.find((o) => o.name.trim().toLowerCase() === name.toLowerCase());
+  function effective(ouId, key) {
+    for (const o of pathTo(ouId).reverse()) { const p = S.pol[o.id]; if (p && key in p) return { value: p[key], from: o.id }; }
+    const def = POLICIES.find((x) => x.key === key).def; return { value: def, from: null };
+  }
+  function appEff(ouId, appId) {
+    for (const o of pathTo(ouId).reverse()) { const a = S.apps[o.id]; if (a && appId in a) return { value: a[appId], from: o.id }; }
+    return { value: "Not set", from: null };
+  }
+  function kioskEff(ouId) {
+    for (const o of pathTo(ouId).reverse()) { if (S.kiosk[o.id]) return { value: S.kiosk[o.id], from: o.id }; }
+    return { value: null, from: null };
+  }
+  function lines(s) { return (s || "").split(/\n+/).map((x) => x.trim().toLowerCase()).filter(Boolean); }
+  function urlMatch(host, pat) {
+    if (pat.includes("*")) { const re = new RegExp("^" + pat.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$"); return re.test(host); }
+    return host === pat || host.endsWith("." + pat);
+  }
+  function siteAllowed(ouId, url) {
+    const host = url.trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0];
+    if (!host) return { ok: true, why: "" };
+    const allow = lines(effective(ouId, "allowlist").value), block = lines(effective(ouId, "blocklist").value);
+    const a = allow.find((p) => urlMatch(host, p)); if (a) return { ok: true, why: `Allowed by exception "${a}"` };
+    const b = block.find((p) => urlMatch(host, p)); if (b) return { ok: false, why: `Blocked by "${b}"` };
+    return { ok: true, why: "No rule blocks this site" };
+  }
+  const labelTarget = (label) => label.startsWith("Cart 6") ? "Grade 6" : label.startsWith("Cart 7") ? "Grade 7" : label.startsWith("Cart 8") ? "Grade 8" : label.startsWith("Teacher") ? "Teachers" : label.startsWith("Testing") ? "Testing Carts" : "Staff";
+  const studentOUs = () => ["Grade 6", "Grade 7", "Grade 8"].map(findOU).filter(Boolean);
+  const enrolled = () => S.devices.filter((d) => d.status === "provisioned" || d.status === "disabled");
+  const licUsed = () => enrolled().length;
+
+  // ---------- Missions (the principal's wish list) ----------
+  function missions() {
+    const st = findOU("Students"), te = findOU("Teachers"), tc = findOU("Testing Carts"), g = studentOUs();
+    const allStudent = (fn) => g.length === 3 && g.every((o) => fn(o.id));
+    const list = [
+      { id: "ous", t: "Build the org unit tree", d: "Under Students, create Grade 6, Grade 7 and Grade 8. Create a Testing Carts org unit for the testing carts.",
+        ok: g.length === 3 && g.every((o) => st && pathTo(o.id).some((p) => p.id === st.id)) && !!tc },
+      { id: "sort", t: "Put every device in the right org unit", d: "Each device's case label tells you where it belongs (Cart 6A = Grade 6, Teacher = Teachers, Testing cart = Testing Carts, Front office = Staff). Nothing should be left in the top-level org unit.",
+        ok: enrolled().length > 0 && enrolled().every((d) => { const want = findOU(labelTarget(d.label)); return want && d.ou === want.id; }) },
+      { id: "boxes", t: "Enroll the new devices from the boxes", d: "Four new Chromebooks are still in their boxes. Enroll each into the right org unit. One will fail; find out why.",
+        ok: S.devices.filter((d) => d.status === "unenrolled").length === 0 },
+      { id: "guest", t: "No guest mode for students", d: "Guest sessions skip every student policy.", ok: allStudent((id) => effective(id, "guestMode").value === "Block guest mode") },
+      { id: "incog", t: "No incognito for students", d: "Close the private-browsing loophole.", ok: allStudent((id) => effective(id, "incognito").value === "Block incognito") },
+      { id: "wall", t: "No meme wallpapers", d: "Students see the school wallpaper and can't change it.", ok: allStudent((id) => effective(id, "wallpaper").value === "Force school wallpaper") },
+      { id: "games", t: "Block game sites for students", d: "freegames.example and similar game sites must be blocked for every grade.", ok: allStudent((id) => !siteAllowed(id, "freegames.example").ok && !siteAllowed(id, "unblocked-games.example").ok) },
+      { id: "teach", t: "Teachers get different access", d: "Teachers can open videos.example for lessons; students cannot.", ok: !!te && siteAllowed(te.id, "videos.example").ok && allStudent((id) => !siteAllowed(id, "videos.example").ok) },
+      { id: "apps", t: "Apps are there when students open the lid", d: "Force-install Class Portal for students and teachers, and Teacher Gradebook for teachers only.",
+        ok: allStudent((id) => appEff(id, "portal").value === "Force install" && appEff(id, "gradebook").value !== "Force install") && !!te && appEff(te.id, "portal").value === "Force install" && appEff(te.id, "gradebook").value === "Force install" },
+      { id: "ext", t: "Shut down filter-dodging extensions", d: "Block Proxy Unblocker VPN for students, and only allow extensions the school approves.",
+        ok: allStudent((id) => appEff(id, "proxyvpn").value === "Block" && effective(id, "extInstall").value === "Only extensions allowed by the school") },
+      { id: "secure", t: "A stolen Chromebook is useless", d: "Block developer mode and turn on forced re-enrollment for every student device.",
+        ok: allStudent((id) => effective(id, "devMode").value === "Block developer mode" && effective(id, "forcedReenroll").value === "Re-enroll automatically after a wipe") },
+      { id: "kiosk", t: "Lock down testing", d: "Testing Carts devices launch the State Test kiosk app automatically. At least one device must be in Testing Carts.",
+        ok: !!tc && kioskEff(tc.id).value === "statetest" && enrolled().some((d) => d.ou === tc.id) },
+      { id: "stolen", t: "Disable the stolen Chromebook", d: `Device ${STOLEN} was reported stolen. Disable it with a lock-screen message that includes the school's name and phone number.`,
+        ok: (() => { const d = S.devices.find((x) => x.serial === STOLEN); return d && d.status === "disabled" && /lakeview/i.test(d.msg) && /\d{3}/.test(d.msg); })() },
+    ];
+    return list;
+  }
+
+  // ---------- Rendering ----------
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  let toastTimer;
+  function toast(m) { const l = $("#layer"); l.querySelector(".toast")?.remove(); const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); t.textContent = m; l.appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 3200); }
+
+  const VIEWS = [["home", "Overview"], ["ous", "Org units"], ["devices", "Devices"], ["settings", "Settings"], ["apps", "Apps and kiosk"], ["preview", "Device preview"], ["missions", "Principal's checklist"], ["log", "Activity log"], ["report", "Report"]];
+  function renderNav() {
+    const done = missions().filter((m) => m.ok).length;
+    $("#nav").innerHTML = VIEWS.map(([id, label]) => `<button data-view="${id}" ${S.view === id ? 'aria-current="page"' : ""}><span>${label}</span>${id === "missions" ? `<span class="count">${done}/13</span>` : id === "devices" ? `<span class="count">${S.devices.length}</span>` : ""}</button>`).join("");
+    const used = licUsed();
+    $("#lic").innerHTML = `<span>Management licenses ${used} of ${S.licenses} used</span><span class="meter" aria-hidden="true"><i style="width:${Math.min(100, (used / S.licenses) * 100)}%"></i></span>`;
+    $("#whoCtx").innerHTML = S.student ? `Admin <b>${esc(S.student)}</b>` : `<span>Add your name on the Report page</span>`;
+  }
+
+  function treeHTML(sel, attr = "data-ou") {
+    const out = [];
+    const walk = (id, depth, last, prefix) => {
+      const o = ouById(id); const kids = children(id);
+      const twig = depth === 0 ? "" : prefix + (last ? "└ " : "├ ");
+      out.push(`<button ${attr}="${id}" aria-selected="${sel === id}"><span class="twig">${twig}</span>${esc(o.name)} <span class="hint">${S.devices.filter((d) => d.ou === id).length || ""}</span></button>`);
+      kids.forEach((k, i) => walk(k.id, depth + 1, i === kids.length - 1, depth === 0 ? "" : prefix + (last ? "  " : "│ ")));
+    };
+    walk(ROOT, 0, true, "");
+    return `<div class="tree" role="tree">${out.join("")}</div>`;
+  }
+
+  function vHome() {
+    const ms = missions(), done = ms.filter((m) => m.ok).length;
+    const dis = S.devices.filter((d) => d.status === "disabled").length;
+    const unsorted = enrolled().filter((d) => d.ou === ROOT).length;
+    const aue = enrolled().filter((d) => d.aue <= "2026-12").length;
+    return `<div><h1>Overview</h1><p class="sub">You are the new IT tech for Lakeview Middle School. Ms. Ortiz, the principal, has a wish list for the new Chromebooks. Work through the Principal's checklist; every change you make is recorded in the activity log.</p></div>
+      <div class="ticket"><b>Message from Ms. Ortiz</b><span>"Kids can't play games or change the wallpaper to memes. A stolen Chromebook has to be useless. Teachers need different access than students. State testing is next month and the devices must be locked down. Every app should already be there when students open the lid. Also: Chromebook ${STOLEN} from Cart 7B was stolen from the gym this morning."</span></div>
+      <div class="tiles">
+        <div class="tile"><span class="n">${done}/13</span><span class="l">checklist items done</span></div>
+        <div class="tile"><span class="n">${enrolled().length}</span><span class="l">devices enrolled</span></div>
+        <div class="tile"><span class="n">${unsorted}</span><span class="l">still in the top-level org unit</span></div>
+        <div class="tile"><span class="n">${S.devices.filter((d) => d.status === "unenrolled").length}</span><span class="l">still in their boxes</span></div>
+        <div class="tile"><span class="n">${dis}</span><span class="l">disabled</span></div>
+        <div class="tile"><span class="n">${aue}</span><span class="l">reach update expiration by end of 2026</span></div>
+      </div>
+      <div class="panel"><div class="row" style="justify-content:space-between"><h2>Recent activity</h2><button class="btn small" data-view="log">See all</button></div>${logHTML(6)}</div>`;
+  }
+
+  function vOUs() {
+    const o = ouById(S.selOU) || ouById(ROOT);
+    const kids = children(o.id), devs = S.devices.filter((d) => d.ou === o.id);
+    return `<div><h1>Org units</h1><p class="sub">Org units group devices that need the same settings. A child org unit inherits every setting from its parent unless you set something different on the child.</p></div>
+      <div class="grid2"><div class="panel">${treeHTML(o.id)}</div>
+      <div class="panel"><h2>${esc(o.name)}</h2><p class="hint">Path: ${pathTo(o.id).map((p) => esc(p.name)).join(" / ")} · ${devs.length} devices · ${kids.length} child org units</p>
+        <div class="row"><label for="newOU">New child org unit</label><input type="text" id="newOU" placeholder="e.g. Grade 6"><button class="btn primary" id="addOU">Add under ${esc(o.name)}</button></div>
+        ${o.id === ROOT ? "" : `<div class="row"><label for="renOU">Rename</label><input type="text" id="renOU" value="${esc(o.name)}"><button class="btn" id="doRen">Rename</button><button class="btn danger" id="delOU" ${kids.length || devs.length ? "disabled title='Move its devices and child org units first'" : ""}>Delete org unit</button></div>
+        <div class="row"><label for="moveOU">Move under</label><select id="moveOU">${S.ous.filter((x) => x.id !== o.id && !pathTo(x.id).some((p) => p.id === o.id)).map((x) => `<option value="${x.id}" ${x.id === o.parent ? "selected" : ""}>${esc(pathTo(x.id).map((p) => p.name).join(" / "))}</option>`).join("")}</select><button class="btn" id="doMove">Move</button></div>`}
+        <div class="row"><button class="btn" data-view="settings">Open settings for ${esc(o.name)}</button><button class="btn" data-view="apps">Apps for ${esc(o.name)}</button></div>
+      </div></div>`;
+  }
+
+  let devFilter = { q: "", ou: "", st: "" }, devSel = new Set();
+  function statusPill(d) {
+    return d.status === "provisioned" ? '<span class="pill good">Enrolled</span>' : d.status === "disabled" ? '<span class="pill bad">Disabled</span>' : d.status === "deprovisioned" ? '<span class="pill mute">Deprovisioned</span>' : '<span class="pill warn">In box</span>';
+  }
+  function vDevices() {
+    const rows = S.devices.filter((d) => (!devFilter.q || (d.serial + d.label + d.model).toLowerCase().includes(devFilter.q.toLowerCase())) && (!devFilter.ou || d.ou === devFilter.ou) && (!devFilter.st || d.status === devFilter.st));
+    const ouOpts = S.ous.map((x) => `<option value="${x.id}">${esc(pathTo(x.id).map((p) => p.name).join(" / "))}</option>`).join("");
+    return `<div><h1>Devices</h1><p class="sub">Select devices to move them to an org unit, disable a lost or stolen one, or deprovision one you're retiring. New devices in boxes must be enrolled first.</p></div>
+      <div class="row"><button class="btn primary" id="openEnroll">Enroll a device</button>
+        <input type="text" id="fq" placeholder="Search serial, label or model" value="${esc(devFilter.q)}">
+        <select id="fou"><option value="">All org units</option>${ouOpts}</select>
+        <select id="fst"><option value="">Any status</option><option value="provisioned">Enrolled</option><option value="unenrolled">In box</option><option value="disabled">Disabled</option><option value="deprovisioned">Deprovisioned</option></select></div>
+      <div class="row panel" style="padding:10px 12px"><b>${devSel.size} selected</b><label for="bulkOU">Move to</label><select id="bulkOU">${ouOpts}</select><button class="btn" id="doBulk" ${devSel.size ? "" : "disabled"}>Move</button><button class="btn danger" id="doDisable" ${devSel.size === 1 ? "" : "disabled"}>Disable…</button><button class="btn" id="doEnable" ${devSel.size ? "" : "disabled"}>Re-enable</button><button class="btn" id="doDeprov" ${devSel.size ? "" : "disabled"}>Deprovision</button></div>
+      <div class="tablewrap"><table><thead><tr><th><input type="checkbox" id="selAll" aria-label="Select all shown"></th><th>Serial</th><th>Case label</th><th>Model</th><th>Update expiration</th><th>Status</th><th>Org unit</th><th>Last sync</th></tr></thead><tbody>
+      ${rows.map((d) => `<tr><td><input type="checkbox" data-sel="${d.serial}" ${devSel.has(d.serial) ? "checked" : ""} aria-label="Select ${d.serial}"></td><td class="mono">${d.serial}</td><td>${esc(d.label)}</td><td>${esc(d.model)}</td><td class="mono">${d.aue}${d.aue <= "2026-12" ? ' <span class="pill warn">soon</span>' : ""}</td><td>${statusPill(d)}</td><td>${esc(ouName(d.ou))}</td><td>${esc(d.lastSync)}</td></tr>`).join("") || '<tr><td colspan="8">No devices match.</td></tr>'}
+      </tbody></table></div>`;
+  }
+
+  function policyControl(p, ouId) {
+    const eff = effective(ouId, p.key), local = S.pol[ouId] && p.key in S.pol[ouId];
+    const src = local ? `<span class="src local">Set here</span>` : eff.from ? `<span class="src">Inherited from ${esc(ouName(eff.from))}</span>` : `<span class="src">Default</span>`;
+    const ctl = p.type === "list"
+      ? `<textarea rows="3" data-pol="${p.key}" id="pol-${p.key}" aria-label="${p.label}">${esc(eff.value)}</textarea>`
+      : `<select data-pol="${p.key}" id="pol-${p.key}" aria-label="${p.label}">${p.options.map((o) => `<option ${o === eff.value ? "selected" : ""}>${o}</option>`).join("")}</select>`;
+    return `<div class="policy"><div><b>${p.label}</b><p class="help">${p.help}</p></div><div style="display:grid;gap:6px">${ctl}<div class="row">${src}${local && ouId !== ROOT ? `<button class="btn small" data-inherit="${p.key}">Inherit from parent</button>` : ""}</div></div></div>`;
+  }
+  function vSettings() {
+    const o = ouById(S.selOU) || ouById(ROOT);
+    const list = POLICIES.filter((p) => p.cat === S.setTab);
+    return `<div><h1>Settings</h1><p class="sub">Pick an org unit, then change a setting. "Set here" means this org unit overrides its parent. Changes apply to every child org unit that doesn't override them.</p></div>
+      <div class="grid2"><div class="panel">${treeHTML(o.id)}</div>
+      <div class="panel"><h2>${esc(o.name)}</h2>
+        <div class="tabs" role="tablist"><button role="tab" data-tab="device" aria-selected="${S.setTab === "device"}">Device settings</button><button role="tab" data-tab="user" aria-selected="${S.setTab === "user"}">User and browser settings</button></div>
+        <p class="hint">${S.setTab === "device" ? "Device settings follow the Chromebook, whoever signs in." : "User and browser settings follow the signed-in user. In this simulator, users take the settings of the org unit their device is in."}</p>
+        <div>${list.map((p) => policyControl(p, o.id)).join("")}</div>
+        ${S.setTab === "user" ? `<div class="row"><label for="testUrl">Test a site for this org unit</label><input type="text" id="testUrl" value="freegames.example"><button class="btn" id="doTest">Test</button><span id="testOut" class="hint"></span></div>` : ""}
+      </div></div>`;
+  }
+
+  function vApps() {
+    const o = ouById(S.selOU) || ouById(ROOT);
+    const k = kioskEff(o.id);
+    return `<div><h1>Apps and kiosk</h1><p class="sub">Force install puts an app on every device or user in the org unit and pins it. Allow lets users install it. Block removes it and stops installs.</p></div>
+      <div class="grid2"><div class="panel">${treeHTML(o.id)}</div>
+      <div style="display:grid;gap:18px;min-width:0"><div class="panel"><h2>Apps for ${esc(o.name)}</h2>
+        <div class="tablewrap"><table><thead><tr><th>App</th><th>Type</th><th>Setting</th><th>Source</th></tr></thead><tbody>
+        ${APPS.filter((a) => a.kind !== "Kiosk app").map((a) => { const e = appEff(o.id, a.id), local = S.apps[o.id] && a.id in S.apps[o.id];
+          return `<tr><td><b>${a.name}</b><div class="hint">${a.note}</div></td><td>${a.kind}</td><td><select data-app="${a.id}" aria-label="${a.name} setting">${["Not set", "Force install", "Allow", "Block"].map((v) => `<option ${v === e.value ? "selected" : ""}>${v}</option>`).join("")}</select></td><td>${local ? '<span class="src local">Set here</span>' : e.from ? `<span class="src">Inherited from ${esc(ouName(e.from))}</span>` : '<span class="src">Not set</span>'}</td></tr>`; }).join("")}
+        </tbody></table></div></div>
+        <div class="panel"><h2>Kiosk mode for ${esc(o.name)}</h2><p class="hint">A kiosk device boots straight into one app, full screen, with no sign-in and no other apps or browser. Use it for testing carts.</p>
+          <div class="row"><label for="kioskSel">Auto-launch kiosk app</label><select id="kioskSel"><option value="">None</option><option value="statetest" ${S.kiosk[o.id] === "statetest" ? "selected" : ""}>State Test (kiosk app)</option></select>
+          <span class="${S.kiosk[o.id] ? "src local" : "src"}">${S.kiosk[o.id] ? "Set here" : k.from ? `Inherited from ${esc(ouName(k.from))}` : "Off"}</span></div>
+        </div></div></div>`;
+  }
+
+  function vPreview() {
+    const d = S.devices.find((x) => x.serial === S.previewSerial) || enrolled()[0];
+    const opts = S.devices.map((x) => `<option value="${x.serial}" ${d && x.serial === d.serial ? "selected" : ""}>${x.serial} · ${esc(x.label)}</option>`).join("");
+    let screen = "", facts = [];
+    if (!d) screen = `<div class="lock">No devices</div>`;
+    else if (d.status === "unenrolled") screen = `<div class="signin"><div class="card"><b>Welcome!</b><span>This device isn't enrolled yet.</span><span class="hint">An admin would press Ctrl + Alt + E here, before anyone signs in, to enroll it.</span></div></div>`;
+    else if (d.status === "deprovisioned") screen = `<div class="signin"><div class="card"><b>Unmanaged device</b><span>This device was deprovisioned and no longer gets school settings.</span></div></div>`;
+    else if (d.status === "disabled") screen = `<div class="lock"><b style="font-size:18px">This device is disabled</b><p class="msg">${esc(d.msg || "Contact your administrator.")}</p></div>`;
+    else {
+      const ou = d.ou, k = kioskEff(ou).value;
+      const ev = (key) => effective(ou, key).value;
+      if (k) screen = `<div class="kiosk"><b style="font-size:20px">State Test</b><span>Kiosk mode: one app, full screen. No browser, no sign-in, no other apps.</span><span class="hint">Launched automatically</span></div>`;
+      else {
+        const forced = APPS.filter((a) => appEff(ou, a.id).value === "Force install").map((a) => `<span>${a.name}</span>`).join("");
+        const wall = ev("wallpaper") === "Force school wallpaper";
+        const test = siteAllowed(ou, S.previewUrl || "");
+        screen = `<div class="desk ${wall ? "wall-school" : "wall-free"}"><span class="wall-label">${wall ? "Lakeview Lynx school wallpaper (locked)" : "Wallpaper: student's own choice"}</span>
+          <div class="browser"><div class="bar"><input type="text" id="pvUrl" value="${esc(S.previewUrl)}" aria-label="Address bar"><button class="btn small" id="pvGo" style="color:#172327">Go</button></div>
+          <div>${S.previewUrl ? (test.ok ? `<b style="color:#2e7d4f">Page opens.</b> ${esc(test.why)}` : `<b style="color:#b5482f">Blocked by your school.</b> ${esc(test.why)}`) : "Type a site to test."}</div>
+          <div class="hint" style="color:#5b6b70">${ev("incognito") === "Block incognito" ? "New incognito window: unavailable" : "New incognito window: available"}</div></div>
+          <div class="shelf">${forced || '<span>No apps pinned</span>'}</div></div>`;
+      }
+      facts = ["guestMode", "signinRestrict", "forcedReenroll", "devMode", "incognito", "wallpaper", "extInstall"].map((key) => { const p = POLICIES.find((x) => x.key === key), e = effective(ou, key); return `<tr><td>${p.label}</td><td>${esc(e.value)}</td><td class="hint">${e.from ? esc(ouName(e.from)) : "Default"}</td></tr>`; });
+    }
+    return `<div><h1>Device preview</h1><p class="sub">See what a student would see on a specific Chromebook, based on its org unit and status. Use this to check your work.</p></div>
+      <div class="row"><label for="pvSel">Device</label><select id="pvSel">${opts}</select>${d ? `<span class="hint">Org unit: ${esc(ouName(d.ou))}</span>` : ""}</div>
+      <div class="grid2" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)"><div class="laptop"><div class="screen">${screen}</div><div class="base"></div></div>
+      <div class="panel"><h2>Settings in effect</h2>${facts.length ? `<div class="tablewrap"><table><thead><tr><th>Setting</th><th>Value</th><th>From</th></tr></thead><tbody>${facts.join("")}</tbody></table></div>` : '<p class="hint">Not available for this device.</p>'}</div></div>`;
+  }
+
+  function vMissions() {
+    const ms = missions();
+    return `<div><h1>Principal's checklist</h1><p class="sub">Each item checks itself as soon as your settings meet it. You can complete them in any order.</p></div>
+      <div class="panel">${ms.map((m, i) => `<div class="mission"><span class="check ${m.ok ? "done" : "todo"}" aria-label="${m.ok ? "Done" : "Not done"}">${m.ok ? "✓" : i + 1}</span><div><b>${m.t}</b><p class="hint">${m.d}</p></div></div>`).join("")}</div>`;
+  }
+
+  function logHTML(n) { return `<div class="log">${S.log.slice(0, n).map((l) => `<div><time>${l.t}</time><span>${esc(l.m)}</span></div>`).join("")}</div>`; }
+  function vLog() { return `<div><h1>Activity log</h1><p class="sub">Every change, newest first. Real consoles keep an audit log like this so changes can be traced.</p></div><div class="panel">${logHTML(300)}</div>`; }
+
+  function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).toUpperCase().padStart(7, "0"); }
+  function reportText() {
+    const ms = missions();
+    const ouLines = []; const walk = (id, depth) => { const o = ouById(id); ouLines.push(`${"  ".repeat(depth)}- ${o.name} (${S.devices.filter((d) => d.ou === id).length} devices)`); children(id).forEach((k) => walk(k.id, depth + 1)); }; walk(ROOT, 0);
+    const pick = (name) => { const o = findOU(name); if (!o) return `${name}: org unit not found`; return `${name}:\n` + POLICIES.map((p) => `    ${p.label}: ${String(effective(o.id, p.key).value || "(none)").replace(/\n/g, ", ")}`).join("\n") + "\n    Apps: " + (APPS.map((a) => `${a.name}=${appEff(o.id, a.id).value}`).join("; ")) + `\n    Kiosk: ${kioskEff(o.id).value ? "State Test auto-launch" : "off"}`; };
+    const body = [
+      `Chromebook Management Simulator report`,
+      `Admin: ${S.student || "(name not entered)"}`,
+      `Generated: ${new Date().toLocaleString()}`,
+      `Checklist: ${ms.filter((m) => m.ok).length} of ${ms.length} complete`,
+      ...ms.map((m) => `  [${m.ok ? "x" : " "}] ${m.t}`),
+      ``, `Org units:`, ...ouLines,
+      ``, `Devices: ${enrolled().length} enrolled, ${S.devices.filter((d) => d.status === "disabled").length} disabled, ${S.devices.filter((d) => d.status === "unenrolled").length} in boxes, ${S.devices.filter((d) => d.status === "deprovisioned").length} deprovisioned`,
+      ...S.devices.filter((d) => d.status === "disabled").map((d) => `  Disabled ${d.serial}: "${d.msg}"`),
+      ``, `Settings in effect:`, pick("Grade 6"), pick("Grade 7"), pick("Grade 8"), pick("Teachers"), pick("Testing Carts"),
+      ``, `Changes logged: ${S.log.length}`,
+    ].join("\n");
+    return body + `\nVerification code: ${hash((S.student || "") + "|" + body.replace(/Generated: .*\n/, ""))}`;
+  }
+  function vReport() {
+    return `<div><h1>Report</h1><p class="sub">Enter your name, then copy this report into your Solve It submission. The verification code changes whenever your configuration or name changes, so your instructor can match the report to your recording.</p></div>
+      <div class="panel"><div class="row"><label for="stuName">Your name</label><input type="text" id="stuName" value="${esc(S.student)}" placeholder="First and last name"><button class="btn primary" id="saveName">Save name</button></div></div>
+      <div class="panel"><div class="row" style="justify-content:space-between"><h2>Configuration report</h2><button class="btn" id="copyRep">Copy report</button></div>
+      <div class="tablewrap" style="border:none"><pre class="mono" id="repText" style="margin:0;white-space:pre-wrap;font-size:13px">${esc(reportText())}</pre></div></div>`;
+  }
+
+  function render() {
+    renderNav();
+    const v = { home: vHome, ous: vOUs, devices: vDevices, settings: vSettings, apps: vApps, preview: vPreview, missions: vMissions, log: vLog, report: vReport }[S.view] || vHome;
+    $("#work").innerHTML = v();
+    if (S.view === "devices") { $("#fou").value = devFilter.ou; $("#fst").value = devFilter.st; }
+    save();
+  }
+
+  // ---------- Dialogs ----------
+  function dialog(html, onMount) {
+    $("#layer").innerHTML = `<div class="overlay"><div class="dialog" role="dialog" aria-modal="true">${html}</div></div>`;
+    const first = $("#layer").querySelector("input, select, textarea, button"); first && first.focus();
+    onMount && onMount($("#layer .dialog"));
+  }
+  const closeDialog = () => { $("#layer").innerHTML = ""; };
+
+  function enrollDialog() {
+    const boxes = S.devices.filter((d) => d.status === "unenrolled");
+    if (!boxes.length) { toast("Every device is out of its box and enrolled."); return; }
+    const ouOpts = S.ous.map((x) => `<option value="${x.id}">${esc(pathTo(x.id).map((p) => p.name).join(" / "))}</option>`).join("");
+    dialog(`<h2>Enroll a device</h2>
+      <p class="hint">On a real Chromebook you'd connect it to the school network and press <b>Ctrl + Alt + E</b> at the welcome screen, before anyone signs in, then sign in with an admin account. Here you choose the device and where it goes.</p>
+      <label for="enDev">Device from the box</label><select id="enDev">${boxes.map((b) => `<option value="${b.serial}">${b.serial} · label "${esc(b.label)}"</option>`).join("")}</select>
+      <label for="enOU">Enroll into org unit</label><select id="enOU">${ouOpts}</select>
+      <label for="enAsset">Asset ID (optional)</label><input type="text" id="enAsset" placeholder="e.g. LMS-2026-0457">
+      <label for="enLoc">Location (optional)</label><input type="text" id="enLoc" placeholder="e.g. Library cart">
+      <div id="enOut"></div>
+      <div class="row" style="justify-content:flex-end"><button class="btn" id="enCancel">Close</button><button class="btn primary" id="enGo">Enroll</button></div>`);
+  }
+  function disableDialog(serial) {
+    dialog(`<h2>Disable ${serial}</h2><p class="hint">A disabled Chromebook shows your message on its screen and can't be used until you re-enable it. Forced re-enrollment keeps a wipe from getting around this.</p>
+      <label for="disMsg">Lock-screen message</label><textarea id="disMsg" rows="3" placeholder="This Chromebook belongs to Lakeview Middle School. If found, please call 555-0142."></textarea>
+      <div class="row" style="justify-content:flex-end"><button class="btn" id="disCancel">Cancel</button><button class="btn danger" id="disGo">Disable device</button></div>`);
+  }
+  function resetDialog() {
+    dialog(`<h2>Reset the simulator?</h2><p>This erases your org units, settings and log and starts over. Your report and checklist progress will be lost.</p>
+      <div class="row" style="justify-content:flex-end"><button class="btn" id="rsCancel">Keep my work</button><button class="btn danger" id="rsGo">Reset</button></div>`);
+  }
+
+  // ---------- Events ----------
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button, input[type=checkbox]"); if (!t) return;
+    if (t.dataset.view) { S.view = t.dataset.view; devSel.clear(); render(); return; }
+    if (t.dataset.ou) { S.selOU = t.dataset.ou; render(); return; }
+    if (t.dataset.tab) { S.setTab = t.dataset.tab; render(); return; }
+    if (t.dataset.inherit) { delete S.pol[S.selOU][t.dataset.inherit]; log(`${ouName(S.selOU)}: "${POLICIES.find((p) => p.key === t.dataset.inherit).label}" now inherits from its parent.`); render(); return; }
+    if (t.dataset.sel) { t.checked ? devSel.add(t.dataset.sel) : devSel.delete(t.dataset.sel); render(); return; }
+    switch (t.id) {
+      case "resetBtn": resetDialog(); break;
+      case "rsCancel": closeDialog(); break;
+      case "rsGo": S = seed(); devSel.clear(); closeDialog(); render(); toast("Simulator reset."); break;
+      case "addOU": {
+        const name = $("#newOU").value.trim(); if (!name) { toast("Type a name for the new org unit."); return; }
+        if (findOU(name)) { toast(`An org unit named "${name}" already exists.`); return; }
+        const id = "ou-" + Date.now().toString(36); S.ous.push({ id, name, parent: S.selOU }); S.selOU = id;
+        log(`Created org unit "${name}" under ${ouName(S.ous.find((o) => o.id === id).parent)}.`); render(); toast(`Created ${name}.`); break; }
+      case "doRen": { const o = ouById(S.selOU), name = $("#renOU").value.trim(); if (!name || name === o.name) return; if (findOU(name)) { toast("That name is taken."); return; } log(`Renamed org unit "${o.name}" to "${name}".`); o.name = name; render(); break; }
+      case "delOU": { const o = ouById(S.selOU); S.ous = S.ous.filter((x) => x.id !== o.id); delete S.pol[o.id]; delete S.apps[o.id]; delete S.kiosk[o.id]; log(`Deleted org unit "${o.name}".`); S.selOU = o.parent; render(); break; }
+      case "doMove": { const o = ouById(S.selOU), to = $("#moveOU").value; if (to === o.parent) return; o.parent = to; log(`Moved org unit "${o.name}" under ${ouName(to)}.`); render(); break; }
+      case "openEnroll": enrollDialog(); break;
+      case "enCancel": closeDialog(); render(); break;
+      case "enGo": {
+        const d = S.devices.find((x) => x.serial === $("#enDev").value), ou = $("#enOU").value, out = $("#enOut");
+        if (d.otherOrg) { out.innerHTML = `<div class="notice bad"><b>Enrollment failed.</b> This device is still registered to another organization (Pine Ridge Schools). The previous owner has to deprovision it, or the reseller has to release it, before it can join Lakeview.</div><button class="btn small" id="enRelease">Pine Ridge has released it</button>`; log(`Enrollment of ${d.serial} failed: still registered to another organization.`); save(); return; }
+        if (licUsed() >= S.licenses) { out.innerHTML = `<div class="notice bad"><b>Enrollment failed.</b> No management licenses are available. Deprovision a retired device or buy more licenses.</div>`; log(`Enrollment of ${d.serial} failed: no licenses available.`); save(); return; }
+        d.status = "provisioned"; d.ou = ou; d.assetId = $("#enAsset").value.trim(); d.location = $("#enLoc").value.trim(); d.lastSync = "Just now";
+        log(`Enrolled ${d.serial} into ${ouName(ou)}${d.assetId ? `, asset ID ${d.assetId}` : ""}.`);
+        out.innerHTML = `<div class="notice good">${d.serial} enrolled into ${esc(ouName(ou))}. It will pick up that org unit's settings at its next sync.</div>`;
+        const left = S.devices.filter((x) => x.status === "unenrolled");
+        $("#enDev").innerHTML = left.map((b) => `<option value="${b.serial}">${b.serial} · label "${esc(b.label)}"</option>`).join("");
+        if (!left.length) $("#enGo").disabled = true; save(); renderNav(); break; }
+      case "enRelease": { const d = S.devices.find((x) => x.serial === $("#enDev").value); if (d) { d.otherOrg = false; log(`${d.serial} released by the previous owner and ready to enroll.`); $("#enOut").innerHTML = `<div class="notice info">Released. Try enrolling it again.</div>`; save(); } break; }
+      case "doBulk": { const to = $("#bulkOU").value; let n = 0, skipped = 0; devSel.forEach((s) => { const d = S.devices.find((x) => x.serial === s); if (d.status === "unenrolled") { skipped++; return; } d.ou = to; n++; }); log(`Moved ${n} device${n === 1 ? "" : "s"} to ${ouName(to)}.`); devSel.clear(); render(); toast(`Moved ${n} to ${ouName(to)}.` + (skipped ? ` ${skipped} still in boxes must be enrolled first.` : "")); break; }
+      case "doDisable": { const s = [...devSel][0], d = S.devices.find((x) => x.serial === s); if (d.status === "unenrolled") { toast("Enroll this device before you can manage it."); return; } disableDialog(s); break; }
+      case "disCancel": closeDialog(); break;
+      case "disGo": { const s = [...devSel][0], d = S.devices.find((x) => x.serial === s), m = $("#disMsg").value.trim(); if (!m) { toast("Write a lock-screen message first."); return; } d.status = "disabled"; d.msg = m; log(`Disabled ${s} with message: "${m}"`); closeDialog(); devSel.clear(); render(); toast(`${s} disabled.`); break; }
+      case "doEnable": { let n = 0; devSel.forEach((s) => { const d = S.devices.find((x) => x.serial === s); if (d.status === "disabled") { d.status = "provisioned"; d.msg = ""; n++; log(`Re-enabled ${s}.`); } }); devSel.clear(); render(); toast(n ? `Re-enabled ${n}.` : "None of the selected devices were disabled."); break; }
+      case "doDeprov": { let n = 0; devSel.forEach((s) => { const d = S.devices.find((x) => x.serial === s); if (d.status === "provisioned" || d.status === "disabled") { d.status = "deprovisioned"; d.ou = null; n++; log(`Deprovisioned ${s}; its license is free again.`); } }); devSel.clear(); render(); toast(n ? `Deprovisioned ${n}. Their licenses are free.` : "Only enrolled or disabled devices can be deprovisioned."); break; }
+      case "selAll": { const boxes = document.querySelectorAll("[data-sel]"); boxes.forEach((b) => t.checked ? devSel.add(b.dataset.sel) : devSel.delete(b.dataset.sel)); render(); break; }
+      case "doTest": { const r = siteAllowed(S.selOU, $("#testUrl").value); $("#testOut").innerHTML = r.ok ? `<span class="pill good">Opens</span> ${esc(r.why)}` : `<span class="pill bad">Blocked</span> ${esc(r.why)}`; break; }
+      case "pvGo": { S.previewUrl = $("#pvUrl").value.trim(); render(); break; }
+      case "saveName": { S.student = $("#stuName").value.trim(); log(`Admin name set to "${S.student}".`); render(); toast("Name saved."); break; }
+      case "copyRep": { const txt = $("#repText").textContent; const fallback = () => { const r = document.createRange(); r.selectNodeContents($("#repText")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast("Report selected. Press Ctrl + C (or Cmd + C) to copy."); };
+        try { navigator.clipboard.writeText(txt).then(() => toast("Report copied."), fallback); } catch (err) { fallback(); } break; }
+    }
+  });
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.dataset.pol) {
+      const p = POLICIES.find((x) => x.key === t.dataset.pol); S.pol[S.selOU] = S.pol[S.selOU] || {};
+      S.pol[S.selOU][p.key] = t.value; log(`${ouName(S.selOU)}: set "${p.label}" to ${p.type === "list" ? (t.value.trim() ? lines(t.value).join(", ") : "(empty)") : `"${t.value}"`}.`); render(); toast("Saved. Child org units inherit this unless they override it.");
+    } else if (t.dataset.app) {
+      const a = APPS.find((x) => x.id === t.dataset.app); S.apps[S.selOU] = S.apps[S.selOU] || {};
+      if (t.value === "Not set") delete S.apps[S.selOU][a.id]; else S.apps[S.selOU][a.id] = t.value;
+      log(`${ouName(S.selOU)}: ${a.name} set to ${t.value}.`); render();
+    } else if (t.id === "kioskSel") {
+      if (t.value) S.kiosk[S.selOU] = t.value; else delete S.kiosk[S.selOU];
+      log(`${ouName(S.selOU)}: kiosk auto-launch ${t.value ? "set to State Test" : "turned off"}.`); render();
+    } else if (t.id === "fou") { devFilter.ou = t.value; render(); }
+    else if (t.id === "fst") { devFilter.st = t.value; render(); }
+    else if (t.id === "pvSel") { S.previewSerial = t.value; render(); }
+  });
+  document.addEventListener("input", (e) => { if (e.target.id === "fq") { devFilter.q = e.target.value; const pos = e.target.selectionStart; render(); const f = $("#fq"); f.focus(); f.setSelectionRange(pos, pos); } });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && $("#layer .overlay")) { closeDialog(); render(); }
+    if (e.key === "Enter" && e.target.id === "pvUrl") { S.previewUrl = e.target.value.trim(); render(); }
+  });
+
+  render();
+})();
+</script>
+
+</body>
+</html>

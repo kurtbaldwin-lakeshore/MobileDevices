@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mobile Devices Simulators</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a console-style header band in the simulators' navy, then the course's nine Learning Plans as a numbered run of simulator rows. */
+:root {
+  --bg: #f3f6f6; --panel: #ffffff; --ink: #172327; --muted: #556569; --line: #d6e1df;
+  --band: #12343b; --band-ink: #e8f1f0; --band-muted: #9fb7b5;
+  --accent: #0e7c7b; --accent-ink: #ffffff; --accent-soft: #e2f1f0; --amber: #e8a33d; --amber-soft: #fbefdb;
+  --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --band: #0a1416; --band-ink: #e4eeec; --band-muted: #8aa3a2;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --band: #0a1416; --band-ink: #e4eeec; --band-muted: #8aa3a2;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 16px; line-height: 1.5; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { background: var(--band); color: var(--band-ink); }
+header .wrap { padding-block: 36px 32px; display: grid; gap: 10px; }
+.course { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.06em; color: var(--band-muted); text-transform: uppercase; }
+h1 { margin: 0; font-size: clamp(28px, 5vw, 40px); line-height: 1.15; text-wrap: balance; }
+.lede { margin: 0; max-width: 62ch; color: var(--band-muted); }
+.lede b { color: var(--band-ink); }
+main .wrap { padding-block: 28px 48px; display: grid; gap: 22px; }
+.note { background: var(--amber-soft); border: 1px solid var(--amber); border-radius: 8px; padding: 12px 14px; font-size: 15px; max-width: 75ch; }
+ol.sims { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.lp { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 16px; align-items: start; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.lpnum { font-family: var(--font-mono); font-weight: 600; font-size: 13px; color: var(--muted); display: grid; gap: 2px; padding-top: 3px; }
+.lpnum b { font-size: 26px; color: var(--accent); line-height: 1; font-family: var(--font-ui); }
+.lpbody { display: grid; gap: 12px; min-width: 0; }
+.lptitle { margin: 0; font-size: 14px; color: var(--muted); font-weight: 400; }
+.sim { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; }
+.sim + .sim { border-top: 1px solid var(--line); padding-top: 12px; }
+.sim h2 { margin: 0; font-size: 19px; line-height: 1.25; }
+.sim p { margin: 2px 0 0; color: var(--muted); font-size: 15px; max-width: 68ch; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 6px; font-size: 13px; }
+.meta span { color: var(--muted); }
+.meta .biz { color: var(--ink); font-weight: 700; }
+.open { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: var(--accent-ink); text-decoration: none; font-weight: 700; padding: 9px 16px; border-radius: 6px; white-space: nowrap; }
+.open:hover { filter: brightness(1.08); }
+.open:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+.final { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 16px; padding: 16px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); }
+.final b { color: var(--ink); }
+footer { color: var(--muted); font-size: 13px; }
+footer .wrap { padding-block: 0 36px; }
+@media (max-width: 600px) {
+  .lp, .final { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .lpnum { grid-auto-flow: column; justify-content: start; align-items: baseline; gap: 8px; }
+  .sim { grid-template-columns: minmax(0, 1fr); }
+  .open { justify-self: start; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <span class="course">10-150-164 Mobile Devices · Lakeshore College</span>
+    <h1>Mobile Devices Simulators</h1>
+    <p class="lede">Every hands-on simulator in the course, in Learning Plan order. Each one runs in your browser, costs nothing and saves your progress on the device you use. Finish its checklist, then copy the report with its <b>verification code</b> into your Solve It.</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <p class="note"><b>Use the same browser and device each time.</b> Progress is saved in your browser, not your Blackboard account. Clearing your browser data or switching computers starts a simulator over.</p>
+
+    <ol class="sims">
+      <li class="lp"><div class="lpnum">LP<b>1</b></div><div class="lpbody"><h3 class="lptitle">Mobile Tech Is Everywhere</h3>
+        <div class="sim"><div><h2>Lakeshore Tech Tour</h2><p>Visit eight local businesses, pick the devices that solve each problem on a budget, and tag the value each one delivers.</p><div class="meta"><span class="biz">Eight Harbor County businesses</span><span>12 checklist items</span></div></div><a class="open" href="tour.html">Open<span aria-hidden="true">&rarr;</span></a></div></div></li>
+
+      <li class="lp"><div class="lpnum">LP<b>2</b></div><div class="lpbody"><h3 class="lptitle">The Store That's Always Out of Stock</h3>
+        <div class="sim"><div><h2>Barcode and Inventory Lab</h2><p>Set up a scanner, build UPC check digits, count and receive stock, set reorder points, print bin labels and fix barcodes that won't scan.</p><div class="meta"><span class="biz">Miller's Hardware</span><span>12 checklist items</span><span>Works with a USB barcode scanner</span></div></div><a class="open" href="barcode.html">Open<span aria-hidden="true">&rarr;</span></a></div></div></li>
+
+      <li class="lp"><div class="lpnum">LP<b>3</b></div><div class="lpbody"><h3 class="lptitle">No Signal in the Barn</h3>
+        <div class="sim"><div><h2>Farm Connectivity Planner</h2><p>Replace slow internet, add a backup line, bring Wi-Fi to metal barns, separate networks and get GPS corrections to the far field.</p><div class="meta"><span class="biz">Harlan Family Dairy</span><span>13 checklist items</span></div></div><a class="open" href="farm.html">Open<span aria-hidden="true">&rarr;</span></a></div></div></li>
+
+      <li class="lp"><div class="lpnum">LP<b>4</b></div><div class="lpbody"><h3 class="lptitle">800 Chromebooks by Monday</h3>
+        <div class="sim"><div><h2>Chromebook Management Simulator</h2><p>Build org units, enroll and sort devices, set policies and apps, lock down testing carts and disable a stolen Chromebook.</p><div class="meta"><span class="biz">Lakeview Middle School</span><span>13 checklist items</span></div></div><a class="open" href="chromebook.html">Open<span aria-hidden="true">&rarr;</span></a></div></div></li>
+
+      <li class="lp"><div class="lpnum">LP<b>5</b></div><div class="lpbody"><h3 class="lptitle">The Nurse Lost Her Phone</h3>
+        <div class="sim"><div><h2>MDM Simulator</h2><p>Enroll iPhones, iPads and Android phones the right way, push profiles and apps, enforce compliance, use Lost Mode and remove work data.</p><div class="meta"><span class="biz">Riverbend Family Clinic</span><span>13 checklist items</span></div></div><a class="open" href="mdm.html">Open<span aria-hidden="true">&rarr;</span></a></div></div></li>
+
+      <li class="lp"><div class="lpnum">LP<b>6</b></div><div class="lpbody"><h3 class="lptitle">Cash Only, Long Lines</h3>
+        <div class="sim"><div><h2>Food Truck POS Simulator</h2><p>Set up a tablet register, run a lunch rush with a declined card and an outage, handle a refund, balance the drawer and read the reports.</p><div class="meta"><span class="biz">Big Lake Curds &amp; Brats</span><span>13 checklist items</span><span>Works with a USB barcode scanner</span></div></div><a class="open" href="pos.html">Open<span aria-hidden="true">&rarr;</span></a></div></div></li>
+
+      <li class="lp"><div class="lpnum">LP<b>7</b></div><div class="lpbody"><h3 class="lptitle">Eyes in the Sky and on the Job</h3>
+        <div class="sim"><div><h2>Drone Mission Planner</h2><p>Plan a crop mapping flight within FAA Part 107 rules: airspace and LAANC, weather, people, privacy, image detail and batteries.</p><div class="meta"><span class="biz">Twin Creeks Ag Cooperative</span><span>13 checklist items</span></div></div><a class="open" href="drone.html">Open<span aria-hidden="true">&rarr;</span></a></div></div></li>
+
+      <li class="lp"><div class="lpnum">LP<b>8</b></div><div class="lpbody"><h3 class="lptitle">Where Did That Pallet Go?</h3>
+        <div class="sim"><div><h2>Building Access Simulator</h2><p>Build access levels and schedules, manage badges and mobile passes, set door lock modes and investigate a weekend break-in.</p><div class="meta"><span class="biz">Northshore Distribution</span><span>13 checklist items</span></div></div><a class="open" href="access.html">Open<span aria-hidden="true">&rarr;</span></a></div></div></li>
+
+      <li class="lp"><div class="lpnum">LP<b>9</b></div><div class="lpbody"><h3 class="lptitle">Smart Signs and Smart Wearables</h3>
+        <div class="sim"><div><h2>Smart Sign Studio</h2><p>Build a café menu board, lobby directory and ER wait-time screen with schedules, sensor triggers and an accessibility check.</p><div class="meta"><span class="biz">Harbor View Hospital</span><span>12 checklist items</span></div></div><a class="open" href="signage.html">Open<span aria-hidden="true">&rarr;</span></a></div>
+        <div class="sim"><div><h2>Plate Reader Policy Simulator</h2><p>Decide whether to host license plate reader cameras, set retention, sharing and search rules, and audit a week of searches. Either recommendation can earn full credit.</p><div class="meta"><span class="biz">Harbor View Hospital</span><span>10 checklist items</span></div></div><a class="open" href="alpr.html">Open<span aria-hidden="true">&rarr;</span></a></div></div></li>
+    </ol>
+
+    <div class="final"><div class="lpnum">Final</div><div><b>Final Project.</b> Pick a real local business and design a solution with at least three mobile technologies. Reuse anything you built in these simulators.</div></div>
+  </div>
+</main>
+
+<footer><div class="wrap">Practice tools built for this course. All businesses and people in them are fictional, and none of the simulators is affiliated with any device, software or payment company.</div></footer>
+</body>
+</html>

@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Building Access Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a console shell. Left rail of sections, top context bar (org unit + licenses), work area on the right. Collapses to a top tab strip on phones. */
+:root {
+  --bg: #f3f6f6; --panel: #ffffff; --ink: #172327; --muted: #5b6b70; --line: #d6e1df;
+  --accent: #0e7c7b; --accent-ink: #ffffff; --accent-soft: #e2f1f0; --amber: #e8a33d; --amber-soft: #fbefdb;
+  --good: #2e7d4f; --good-soft: #e3f3e8; --warn: #9a6200; --warn-soft: #fff3d6; --bad: #b5482f; --bad-soft: #f9e3dd;
+  --rail: #12343b; --rail-ink: #e8f1f0; --rail-muted: #9fb7b5;
+  --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.45; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.mono { font-family: var(--font-mono); font-size: 0.9em; }
+.shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100%; }
+.rail { background: var(--rail); color: var(--rail-ink); padding-block: 18px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; display: flex; flex-direction: column; gap: 18px; }
+.brand { display: grid; gap: 2px; }
+.brand b { font-size: 17px; letter-spacing: 0.01em; }
+.brand span { color: var(--rail-muted); font-size: 12px; }
+.nav { display: grid; gap: 2px; }
+.nav button { all: unset; cursor: pointer; padding: 8px 10px; border-radius: 6px; color: var(--rail-ink); display: flex; justify-content: space-between; gap: 8px; }
+.nav button:hover { background: rgba(255,255,255,0.07); }
+.nav button[aria-current="page"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.nav button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.nav .count { font-family: var(--font-mono); font-size: 12px; opacity: 0.85; }
+.rail-foot { margin-top: auto; color: var(--rail-muted); font-size: 12px; display: grid; gap: 8px; }
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding-block: 12px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--panel); border-bottom: 1px solid var(--line); }
+.topbar .ctx { color: var(--muted); font-size: 13px; }
+.topbar .ctx b { color: var(--ink); }
+.lic { margin-left: auto; display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+.meter { width: 120px; height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.work { padding-block: 20px 40px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; align-content: start; }
+h1 { font-size: 24px; margin: 0; text-wrap: balance; }
+h2 { font-size: 17px; margin: 0; }
+p { margin: 0; }
+.sub { color: var(--muted); max-width: 70ch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 4px; }
+.tile .n { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile .l { color: var(--muted); font-size: 13px; }
+.btn { cursor: pointer; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 12px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.small { padding: 3px 8px; font-size: 13px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+input[type=text], select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+textarea { width: 100%; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tree { display: grid; gap: 2px; }
+.tree button { all: unset; cursor: pointer; padding: 5px 8px; border-radius: 6px; display: flex; gap: 6px; align-items: center; }
+.tree button:hover { background: var(--accent-soft); }
+.tree button[aria-selected="true"] { background: var(--accent-soft); font-weight: 700; box-shadow: inset 3px 0 0 var(--accent); }
+.tree button:focus-visible { outline: 2px solid var(--amber); }
+.tree .twig { color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: pre; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--accent-soft); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: none; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.mute { background: var(--line); color: var(--muted); }
+.policy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 300px); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.policy:last-child { border-bottom: none; }
+.policy .help { color: var(--muted); font-size: 13px; }
+.src { font-size: 12px; color: var(--muted); }
+.src.local { color: var(--accent); font-weight: 700; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { all: unset; cursor: pointer; padding: 8px 12px; border-bottom: 3px solid transparent; }
+.tabs button[aria-selected="true"] { border-color: var(--accent); font-weight: 700; }
+.tabs button:focus-visible { outline: 2px solid var(--amber); }
+.mission { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.mission:last-child { border-bottom: none; }
+.check { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.check.done { background: var(--good); color: var(--panel); }
+.check.todo { border: 2px solid var(--line); color: var(--muted); }
+.hint { color: var(--muted); font-size: 13px; }
+.ticket { background: var(--amber-soft); border: 1px solid var(--amber); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 4px; }
+.ticket b { color: var(--ink); }
+.log { display: grid; gap: 0; }
+.log div { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.log time { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.notice { border-radius: var(--r); padding: 10px 12px; font-size: 14px; }
+.notice.bad { background: var(--bad-soft); color: var(--bad); }
+.notice.good { background: var(--good-soft); color: var(--good); }
+.notice.info { background: var(--accent-soft); color: var(--ink); }
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--rail); color: var(--rail-ink); padding: 10px 14px; border-radius: var(--r); box-shadow: 0 6px 24px rgba(0,0,0,0.25); max-width: min(360px, calc(100vw - 32px)); }
+/* Chromebook preview */
+.laptop { width: 100%; max-width: 640px; }
+.screen { aspect-ratio: 16 / 10; max-width: 100%; border: 10px solid #1e2427; border-radius: 12px 12px 4px 4px; position: relative; overflow: hidden; background: #24343a; color: #fff; }
+.base { height: 14px; background: #2c3438; border-radius: 0 0 14px 14px; margin: 0 -4%; }
+.wall-school { background: radial-gradient(circle at 30% 30%, #1b8f8c, #0b3d42 70%); }
+.wall-free { background: repeating-linear-gradient(45deg, #b04ad1 0 24px, #ff8a00 24px 48px, #2ec4ff 48px 72px); }
+.desk { position: absolute; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 12px; gap: 8px; }
+.wall-label { font-size: 13px; background: rgba(0,0,0,0.35); padding: 4px 8px; border-radius: 6px; justify-self: start; }
+.browser { background: #fff; color: #172327; border-radius: 8px; align-self: center; justify-self: center; width: min(88%, 460px); padding: 10px; display: grid; gap: 8px; font-size: 13px; }
+.browser .bar { display: flex; gap: 6px; }
+.browser input { flex: 1; background: #eef3f3; border: 1px solid #c9d6d4; color: #172327; }
+.shelf { justify-self: center; display: flex; gap: 6px; background: rgba(0,0,0,0.45); padding: 6px 10px; border-radius: 99px; flex-wrap: wrap; justify-content: center; }
+.shelf span { background: rgba(255,255,255,0.9); color: #172327; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+.lock { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px; padding: 20px; background: #0d1416; }
+.lock .msg { max-width: 40ch; font-size: 15px; }
+.kiosk { position: absolute; inset: 0; background: #f4f7fb; color: #172327; display: grid; place-content: center; text-align: center; gap: 8px; padding: 16px; }
+.signin { position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; text-align: center; background: #20323a; }
+.signin .card { background: #fff; color: #172327; border-radius: 10px; padding: 16px 20px; display: grid; gap: 8px; min-width: 220px; }
+.overlay { position: fixed; inset: 0; background: rgba(8,16,18,0.55); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.dialog { background: var(--panel); border-radius: 12px; border: 1px solid var(--line); width: min(540px, 100%); max-height: 90vh; overflow: auto; padding: 18px; display: grid; gap: 12px; }
+.disclaimer { font-size: 12px; color: var(--muted); }
+@media (max-width: 760px) {
+  .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .rail { padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 10px; }
+  .nav { grid-auto-flow: column; overflow-x: auto; }
+  .nav button { white-space: nowrap; }
+  .rail-foot { display: none; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .policy { grid-template-columns: minmax(0, 1fr); }
+  .lic { margin-left: 0; }
+  .topbar, .work { padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+}
+@media (prefers-reduced-motion: no-preference) { .nav button, .btn, .tree button { transition: background 0.15s, border-color 0.15s; } }
+</style>
+<style>
+/* Access control additions */
+body { margin: 0; }
+.stepper { display: grid; gap: 12px; align-content: start; }
+.plan { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; }
+.plan svg { width: 100%; height: auto; display: block; }
+.days { display: flex; flex-wrap: wrap; gap: 6px; }
+.days label, .doorchk label { display: inline-flex; gap: 4px; align-items: center; border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; font-size: 14px; }
+.doorchk { display: flex; flex-wrap: wrap; gap: 6px; }
+.cred { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.cred:last-child { border-bottom: none; }
+.ev td { font-size: 13px; }
+.ev tr.flag td { background: var(--warn-soft); }
+.q { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.q:last-child { border-bottom: none; }
+.q label { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; font-size: 14px; }
+.result { border-radius: var(--r); padding: 12px; font-size: 15px; }
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <a href="index.html" class="hub-back" style="color:var(--rail-ink);font-size:13px;text-decoration:underline;text-underline-offset:3px">&larr; All simulators</a><div class="brand"><b>Access Console</b><span>Northshore Distribution · training</span></div>
+    <nav class="nav" id="nav" aria-label="Sections"></nav>
+    <div class="rail-foot">
+      <span>Building Access Simulator for 10-150-164 Mobile Devices. A practice tool modeled on cloud-managed door access systems; not a vendor product and not affiliated with any access control company. Northshore Distribution and its staff are fictional.</span>
+      <button class="btn small" id="resetBtn" style="color:var(--rail-ink);background:transparent;border-color:var(--rail-muted)">Reset simulator</button>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="ctx">Site <b>Northshore Distribution</b></div>
+      <div class="ctx">Admin <b id="whoName"></b></div>
+      <div class="lic" id="lic"></div>
+    </header>
+    <main class="work" id="work"></main>
+  </div>
+</div>
+<div id="layer"></div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const DAYN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], DAYORDER = [1, 2, 3, 4, 5, 6, 0], ALLDAYS = [0, 1, 2, 3, 4, 5, 6], WEEKDAYS = [1, 2, 3, 4, 5];
+  const hm = (min) => { if (min >= 1440) return "Midnight (end of day)"; const h = Math.floor(min / 60), m = min % 60, ap = h >= 12 ? "PM" : "AM"; return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${ap}`; };
+  const TIMES = Array.from({ length: 49 }, (_, i) => i * 30);
+
+  // ---------- World ----------
+  const DOORS = [
+    { id: "main", name: "Main entrance (lobby)", x: 40, y: 470, note: "Front door. Visitors, office staff and everyone arriving for a shift use it." },
+    { id: "dock", name: "Shipping dock personnel door", x: 960, y: 130, note: "Walk-in door next to the truck bays. Drivers knock here." },
+    { id: "floor", name: "Warehouse floor door", x: 330, y: 300, note: "From the office hallway onto the warehouse floor." },
+    { id: "cage", name: "High-value cage", x: 760, y: 420, note: "Locked chain-link room for electronics and other high-value pallets." },
+    { id: "server", name: "Server closet", x: 200, y: 140, note: "Network switches, the access control controller and the Wi-Fi controller." },
+  ];
+  const doorName = (id) => DOORS.find((d) => d.id === id).name;
+  const ROLES = {
+    office: { label: "Office staff", doors: ["main"], days: WEEKDAYS, from: 420, to: 1080, rule: "Main entrance only, Monday to Friday, 7 AM to 6 PM." },
+    first: { label: "Warehouse, 1st shift", doors: ["main", "dock", "floor"], days: WEEKDAYS, from: 330, to: 900, rule: "Main entrance, dock door and warehouse floor, Monday to Friday, 5:30 AM to 3 PM (the shift is 6 to 2:30, plus 30 minutes on each end)." },
+    second: { label: "Warehouse, 2nd shift", doors: ["main", "dock", "floor"], days: WEEKDAYS, from: 840, to: 1410, rule: "Main entrance, dock door and warehouse floor, Monday to Friday, 2 PM to 11:30 PM (the shift is 2:30 to 11, plus 30 minutes on each end)." },
+    super: { label: "Supervisor / manager", doors: ["main", "dock", "floor", "cage"], days: ALLDAYS, from: 0, to: 1440, rule: "Main, dock, floor and the high-value cage, any day, any time. Nobody else opens the cage." },
+    it: { label: "IT", doors: ["main", "floor", "server"], days: ALLDAYS, from: 0, to: 1440, rule: "Main, warehouse floor (to fix scanners and Wi-Fi) and the server closet, any time. Nobody else opens the server closet." },
+    clean: { label: "Cleaning contractor", doors: ["main", "floor"], days: [2, 4], from: 1080, to: 1320, rule: "Main entrance and warehouse floor, Tuesday and Thursday, 6 PM to 10 PM." },
+    gone: { label: "Former employee", doors: [], days: [], from: 0, to: 0, rule: "No access." },
+    visitor: { label: "Visitor", doors: [], days: [], from: 0, to: 0, rule: "Only what their temporary pass allows." },
+  };
+  const CTYPE = { prox: "125 kHz prox card", smart: "Encrypted smart card (13.56 MHz)", mobile: "Mobile credential (phone)" };
+  const EVENTS = [
+    ["Fri 5:02 PM", "Main entrance (lobby)", "Beth Larsen", "Prox 40112", "Granted", ""],
+    ["Fri 10:58 PM", "Warehouse floor door", "Keisha Grant", "Prox 40355", "Granted", ""],
+    ["Sat 6:10 AM", "Shipping dock personnel door", "Greg Lindqvist", "Prox 40020", "Granted", ""],
+    ["Sat 9:00 AM", "Main entrance (lobby)", "(door schedule)", "", "Unlocked", "Unlocked by schedule until 10 PM"],
+    ["Sat 11:48 PM", "High-value cage", "Ray Dorn", "Prox 40271", "Granted", "flag"],
+    ["Sat 11:51 PM", "Shipping dock personnel door", "Ray Dorn", "Prox 40271", "Granted", "Door held open 4 min"],
+    ["Sun 2:13 AM", "Shipping dock personnel door", "Derek Haas", "Prox 38815", "Granted", "flag"],
+    ["Sun 2:14 AM", "Warehouse floor door", "Derek Haas", "Prox 38815", "Granted", ""],
+    ["Sun 2:40 AM", "Shipping dock personnel door", "Derek Haas", "Prox 38815", "Granted", "Door held open 6 min"],
+    ["Sun 4:05 PM", "Main entrance (lobby)", "Ana Ruiz (Spotless Cleaning)", "Prox 41907", "Granted", "Cleaning crew isn't scheduled on Sundays"],
+    ["Mon 5:41 AM", "Main entrance (lobby)", "Pao Vang", "Prox 40388", "Granted", ""],
+    ["Mon 5:43 AM", "Main entrance (lobby)", "Unknown card", "Prox 99120", "Denied", "Card not in system"],
+    ["Mon 6:02 AM", "High-value cage", "Greg Lindqvist", "Prox 40020", "Granted", "Greg reports two pallets of electronics missing"],
+  ];
+  const QUESTIONS = [
+    { id: "q1", t: "Ray Dorn's card opened the high-value cage at 11:48 PM Saturday. HR confirms Ray was on approved vacation in Florida from Saturday morning to Wednesday. What is the most likely explanation?", opts: [
+      ["a", "Ray came back early and didn't tell anyone."],
+      ["b", "Someone copied Ray's 125 kHz prox card. Old prox cards send the same unencrypted number every time, so a copy looks exactly like the real card to the reader."],
+      ["c", "The cage reader malfunctioned and logged the wrong name."],
+      ["d", "The cage was unlocked by schedule, so the log is meaningless."]], ans: "b" },
+    { id: "q2", t: "Derek Haas was fired on Friday afternoon. Why could his badge open the dock door and the warehouse floor early Sunday morning?", opts: [
+      ["a", "His card was never deactivated, and the old 'All doors, all times' access level let any active card in at any hour."],
+      ["b", "Someone held the dock door open for him."],
+      ["c", "Badges keep working for 7 days after a person is fired, by law."],
+      ["d", "The dock door was unlocked by schedule all weekend."]], ans: "a" },
+    { id: "q3", t: "What is the best single change to stop this kind of cage break-in from happening again?", opts: [
+      ["a", "Post a sign on the cage that says 'Authorized personnel only'."],
+      ["b", "Replace prox cards for anyone with cage access with encrypted smart cards or mobile credentials, and make offboarding part of HR's checklist."],
+      ["c", "Make the cage fail-safe so it opens during power outages."],
+      ["d", "Delete the access logs every night so nobody can misuse them."]], ans: "b" },
+  ];
+
+  function seed() {
+    let n = 40100;
+    const P = (name, role, note, extra) => Object.assign({ id: "p" + name.split(" ")[0].toLowerCase(), name, role, note: note || "", levels: ["lv-legacy"], creds: [{ id: "c" + n, type: "prox", num: String(n++), status: "active" }] }, extra || {});
+    const people = [
+      P("Beth Larsen", "office", "Office and HR."),
+      P("Tom Reinholt", "office", "Customer service."),
+      P("Carlos Mendez", "first"), P("Jenna Wolff", "first", "Lost her badge in the parking lot on Friday."), P("Pao Vang", "first"),
+      P("Keisha Grant", "second"), P("Nick Szymanski", "second"),
+      P("Greg Lindqvist", "super", "Warehouse manager."),
+      P("Ray Dorn", "super", "Supervisor. On approved vacation in Florida, Saturday to Wednesday.", { creds: [{ id: "c40271", type: "prox", num: "40271", status: "active" }] }),
+      P("Angela Moua", "super", "Facilities and security manager. She asked for your help."),
+      P("Hannah Yang", "it", "IT. Already uses a mobile credential.", { creds: [{ id: "cHY", type: "mobile", num: "HY-phone", status: "active" }] }),
+      P("Ana Ruiz", "clean", "Spotless Commercial Cleaning (contractor).", { creds: [{ id: "c41907", type: "prox", num: "41907", status: "active" }] }),
+      P("Derek Haas", "gone", "Former 2nd shift associate. Let go Friday at 3 PM.", { creds: [{ id: "c38815", type: "prox", num: "38815", status: "active" }] }),
+    ];
+    return { v: 1, student: "", people, levels: [{ id: "lv-legacy", name: "All doors, all times (legacy)", doors: DOORS.map((d) => d.id), days: ALLDAYS, from: 0, to: 1440 }],
+      doors: { main: { unlock: { days: ALLDAYS, from: 360, to: 1320 }, fail: "safe" }, dock: { unlock: null, fail: "safe" }, floor: { unlock: null, fail: "safe" }, cage: { unlock: null, fail: "safe" }, server: { unlock: null, fail: "safe" } },
+      privacy: { retention: "Forever", reports: "Every admin and supervisor", notice: false }, answers: {}, selLevel: "lv-legacy", view: "home",
+      test: { person: "pderek", door: "dock", day: 0, min: 120 },
+      log: [{ t: stamp(), m: "Simulator started. Everyone shares one legacy access level that opens every door at all times." }] };
+  }
+  function stamp() { return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  const KEY = "md-access-sim-v1";
+  let S;
+  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+  if (!S || S.v !== 1) S = seed();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage blocked: keep working in memory */ } }
+  function log(m) { S.log.unshift({ t: stamp(), m }); if (S.log.length > 300) S.log.length = 300; }
+  let toastTimer;
+  function toast(m) { const l = $("#layer"); const o = l.querySelector(".toast"); if (o) o.remove(); const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); t.textContent = m; l.appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 3400); }
+
+  // ---------- Model ----------
+  const person = (id) => S.people.find((p) => p.id === id);
+  const level = (id) => S.levels.find((l) => l.id === id);
+  const activeCreds = (p) => p.creds.filter((c) => c.status === "active");
+  function grantBy(p, door, day, min) {
+    if (!activeCreds(p).length) return null;
+    return p.levels.map(level).filter(Boolean).find((l) => l.doors.includes(door) && l.days.includes(day) && l.from <= min && min < l.to) || null;
+  }
+  function unlocked(door, day, min) { const u = S.doors[door].unlock; return !!(u && u.days.includes(day) && u.from <= min && min < u.to); }
+  const SAMPLES = []; for (let d = 0; d < 7; d++) for (let h = 0; h < 24; h++) { SAMPLES.push([d, h * 60 + 15]); SAMPLES.push([d, h * 60 + 45]); }
+  function matchesRole(p) {
+    const r = ROLES[p.role];
+    return DOORS.every((door) => SAMPLES.every(([d, m]) => { const want = r.doors.includes(door.id) && r.days.includes(d) && r.from <= m && m < r.to; return !!grantBy(p, door.id, d, m) === want; }));
+  }
+  const roleOK = (roles) => { const ps = S.people.filter((p) => roles.includes(p.role)); return ps.length > 0 && ps.every(matchesRole); };
+  const hasCage = (p) => p.levels.map(level).filter(Boolean).some((l) => l.doors.includes("cage"));
+
+  // ---------- Missions ----------
+  function missions() {
+    const derek = person("pderek"), jenna = person("pjenna");
+    const vis = S.people.filter((p) => p.role === "visitor");
+    const visOK = vis.some((p) => { const ls = p.levels.map(level).filter(Boolean); const doors = new Set(ls.flatMap((l) => l.doors)); const c = activeCreds(p);
+      return c.some((x) => x.temp) && doors.size === 1 && doors.has("dock") && ls.every((l) => l.days.length === 1 && l.days[0] === 1 && l.from >= 270 && l.from <= 300 && l.to >= 480 && l.to <= 510); });
+    const m = S.doors.main.unlock;
+    return [
+      { t: "Warehouse associates: shift-only access", d: ROLES.first.rule + " " + ROLES.second.rule, ok: roleOK(["first", "second"]) },
+      { t: "Give Monday's early truck driver a temporary pass", d: "Dock door only, Monday 5:00 to 8:00 AM, on a mobile pass that expires at the end of the day.", ok: visOK },
+      { t: "Supervisors: all warehouse doors plus the cage, any time", d: ROLES.super.rule, ok: roleOK(["super"]) },
+      { t: "IT only for the server closet", d: ROLES.it.rule, ok: roleOK(["it"]) },
+      { t: "Cleaning crew: their nights only", d: ROLES.clean.rule, ok: roleOK(["clean"]) },
+      { t: "Office staff: front door during office hours", d: ROLES.office.rule, ok: roleOK(["office"]) },
+      { t: "Shut off Derek's access completely", d: "Revoke every credential he has and remove his access levels.", ok: derek.creds.every((c) => c.status === "revoked") && derek.levels.length === 0 },
+      { t: "Handle Jenna's lost badge the right way", d: "Mark the lost card as Lost (so any use of it shows up in the log) and give her a mobile credential.", ok: jenna.creds.some((c) => c.type === "prox" && c.status === "lost") && jenna.creds.some((c) => c.type === "mobile" && c.status === "active") },
+      { t: "No clonable prox cards for anyone who can open the cage", d: "Anyone with cage access needs an encrypted smart card or a mobile credential, and their prox card turned off.", ok: S.people.filter(hasCage).length > 0 && S.people.filter(hasCage).every((p) => !p.creds.some((c) => c.type === "prox" && c.status === "active") && activeCreds(p).length > 0) },
+      { t: "Unlock the front door only during office hours", d: "The lobby should unlock for visitors Monday to Friday, 8 AM to 5 PM, and stay locked (badge only) the rest of the time. No other door should unlock on a schedule.", ok: !!(m && m.days.length === 5 && WEEKDAYS.every((d) => m.days.includes(d)) && m.from === 480 && m.to === 1020) && ["dock", "floor", "cage", "server"].every((d) => !S.doors[d].unlock) },
+      { t: "Set what each lock does when the power fails", d: "The main entrance is an exit route, so it should be fail-safe (unlocks). The cage and server closet should be fail-secure (stay locked).", ok: S.doors.main.fail === "safe" && S.doors.cage.fail === "secure" && S.doors.server.fail === "secure" },
+      { t: "Investigate the weekend cage break-in", d: "Read the access log and answer Angela's three questions.", ok: QUESTIONS.every((q) => S.answers[q.id] === q.ans) },
+      { t: "Set privacy rules for badge data", d: "Keep logs 90 days, let only security admins run reports on people, and post a notice telling employees what's recorded and why.", ok: S.privacy.retention === "90 days" && S.privacy.reports === "Security admins only" && S.privacy.notice },
+    ];
+  }
+
+  // ---------- Views ----------
+  const NAV = [["home", "Overview"], ["doors", "Doors"], ["levels", "Access levels"], ["people", "People and credentials"], ["test", "Test a badge"], ["events", "Access log"], ["privacy", "Privacy settings"], ["missions", "Checklist"], ["log", "Activity log"], ["report", "Submit report"]];
+  function renderNav() {
+    const ms = missions(), done = ms.filter((m) => m.ok).length;
+    const counts = { missions: `${done}/${ms.length}`, people: S.people.length, levels: S.levels.length };
+    $("#nav").innerHTML = NAV.map(([v, l]) => `<button data-view="${v}" ${S.view === v ? 'aria-current="page"' : ""}><span>${l}</span>${counts[v] != null ? `<span class="count">${counts[v]}</span>` : ""}</button>`).join("");
+    $("#whoName").textContent = S.student || "Student";
+    $("#lic").innerHTML = `Checklist ${done} of ${ms.length}<span class="meter"><i style="width:${Math.round((done / ms.length) * 100)}%"></i></span>`;
+  }
+  function planSVG() {
+    const col = (id) => (S.doors[id].fail === "secure" ? "#b5482f" : "#0e7c7b");
+    return `<svg viewBox="0 0 1000 560" role="img" aria-label="Floor plan of Northshore Distribution with five doors">
+      <rect x="0" y="0" width="1000" height="560" fill="#eef3f2"/>
+      <rect x="40" y="40" width="920" height="480" fill="#ffffff" stroke="#12343b" stroke-width="6"/>
+      <rect x="40" y="40" width="290" height="480" fill="#f4efe6" stroke="#12343b" stroke-width="4"/>
+      <text x="60" y="380" font-size="26" fill="#5a503f" font-weight="700">Offices</text><text x="60" y="410" font-size="20" fill="#5a503f">Break room, restrooms</text>
+      <rect x="60" y="60" width="200" height="130" fill="#dfe8f5" stroke="#12343b" stroke-width="3"/><text x="75" y="100" font-size="22" fill="#2b4f86" font-weight="700">Server closet</text>
+      <text x="420" y="90" font-size="30" fill="#1f3315" font-weight="700">Warehouse floor</text>
+      ${[0, 1, 2, 3].map((i) => `<rect x="${400 + i * 120}" y="140" width="70" height="230" fill="#d8cfbd"/>`).join("")}<text x="410" y="400" font-size="18" fill="#5a503f">Racks</text>
+      <rect x="680" y="400" width="250" height="100" fill="#fbe3dd" stroke="#b5482f" stroke-width="4" stroke-dasharray="10 6"/><text x="700" y="460" font-size="24" fill="#7a2f1e" font-weight="700">High-value cage</text>
+      ${[0, 1, 2].map((i) => `<rect x="${960}" y="${200 + i * 90}" width="30" height="70" fill="#b9b2a5"/>`).join("")}<text x="860" y="190" font-size="18" fill="#5a503f">Truck bays</text>
+      ${DOORS.map((d) => `<g><circle cx="${d.x}" cy="${d.y}" r="20" fill="${col(d.id)}" stroke="#ffffff" stroke-width="4"/><text x="${d.x}" y="${d.y + 7}" font-size="18" text-anchor="middle" fill="#fff" font-weight="700">${DOORS.indexOf(d) + 1}</text></g>`).join("")}
+    </svg>`;
+  }
+  function vHome() {
+    return `<div><h1>Overview</h1><p class="sub">Northshore's door system was installed years ago and set up the quick way: everyone shares one access level that opens every door at every hour. You're helping Angela fix it.</p></div>
+      <div class="ticket"><b>Message from Angela Moua, facilities and security manager</b><span>"Greg found two pallets of electronics missing from the cage Monday morning. The log says Ray's badge opened the cage Saturday night, but Ray was in Florida. And Derek, who we let go Friday, was in the building at 2 AM Sunday. I need the system set up properly: the right doors for the right people at the right times, no more cards that can be copied for the cage, and some rules about who gets to look at everyone's badge history. The checklist has everything."</span></div>
+      <div class="grid2" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)"><div class="plan">${planSVG()}</div>
+      <div class="panel"><h2>Doors</h2>${DOORS.map((d, i) => `<p class="hint"><b>${i + 1}. ${d.name}</b><br>${d.note}</p>`).join("")}<p class="hint">Teal: fail-safe (unlocks if power fails). Red: fail-secure (stays locked).</p></div></div>
+      <div class="panel"><h2>Recent activity</h2>${logHTML(5)}</div>`;
+  }
+  const timeSel = (id, v) => `<select id="${id}">${TIMES.map((t) => `<option value="${t}" ${t === v ? "selected" : ""}>${hm(t)}</option>`).join("")}</select>`;
+  const daysBox = (prefix, sel) => `<div class="days">${DAYORDER.map((d) => `<label><input type="checkbox" class="${prefix}" value="${d}" ${sel.includes(d) ? "checked" : ""}>${DAYN[d]}</label>`).join("")}</div>`;
+  const daysText = (ds) => (ds.length === 7 ? "Every day" : ds.length === 5 && WEEKDAYS.every((d) => ds.includes(d)) ? "Mon–Fri" : DAYORDER.filter((d) => ds.includes(d)).map((d) => DAYN[d]).join(", ") || "No days");
+  function vDoors() {
+    return `<div><h1>Doors</h1><p class="sub">Every door has a reader and an electric lock wired to a door controller on the network. An <b>unlock schedule</b> leaves a door open to anyone during set hours. The <b>power-failure mode</b> decides what the lock does if power is lost. Building and fire codes have the final say on exit doors.</p></div>
+      ${DOORS.map((d, i) => { const st = S.doors[d.id], u = st.unlock; return `<div class="panel"><div class="row" style="justify-content:space-between"><h2>${i + 1}. ${d.name}</h2><span class="hint">Reader: multi-technology (prox, smart card, mobile)</span></div><p class="hint">${d.note}</p>
+        <div class="policy"><div><b>Unlock schedule</b><p class="help">${u ? `Unlocked ${daysText(u.days)}, ${hm(u.from)} to ${hm(u.to)}. Badge needed at all other times.` : "Never unlocks on a schedule. A badge is always needed."}</p></div>
+          <div class="stepper"><select id="us-${d.id}"><option value="none" ${u ? "" : "selected"}>No unlock schedule</option><option value="sched" ${u ? "selected" : ""}>Unlock on a schedule</option></select>
+          ${u ? `${daysBox("ud-" + d.id, u.days)}<div class="row">${timeSel("uf-" + d.id, u.from)} to ${timeSel("ut-" + d.id, u.to)}</div><button class="btn small primary" data-saveunlock="${d.id}">Save schedule</button>` : ""}</div></div>
+        <div class="policy"><div><b>If power fails</b><p class="help">Fail-safe locks unlock without power, so people are never trapped. Fail-secure locks stay locked, protecting what's inside; people inside can still exit with the handle.</p></div>
+          <select id="fm-${d.id}" data-fail="${d.id}"><option value="safe" ${st.fail === "safe" ? "selected" : ""}>Fail-safe (unlocks)</option><option value="secure" ${st.fail === "secure" ? "selected" : ""}>Fail-secure (stays locked)</option></select></div></div>`; }).join("")}`;
+  }
+  function vLevels() {
+    const l = level(S.selLevel) || S.levels[0];
+    const users = l ? S.people.filter((p) => p.levels.includes(l.id)) : [];
+    return `<div><h1>Access levels</h1><p class="sub">An access level is a set of doors plus the days and hours they open. You give people one or more levels on the People page. Build one level per role, using Angela's rules on the Checklist.</p></div>
+      <div class="grid2"><div class="panel"><h2>Levels</h2><div class="tree">${S.levels.map((x) => `<button data-lv="${x.id}" aria-selected="${l && x.id === l.id}">${esc(x.name)}</button>`).join("")}</div>
+        <div class="row"><input type="text" id="newLv" placeholder="e.g. Warehouse 1st shift"><button class="btn primary" id="addLv">New level</button></div></div>
+      ${l ? `<div class="panel stepper"><h2>${esc(l.name)}</h2>
+        <label for="lvName">Name</label><input type="text" id="lvName" value="${esc(l.name)}">
+        <b style="font-size:14px">Doors</b><div class="doorchk">${DOORS.map((d) => `<label><input type="checkbox" class="lvdoor" value="${d.id}" ${l.doors.includes(d.id) ? "checked" : ""}>${d.name}</label>`).join("")}</div>
+        <b style="font-size:14px">Days</b>${daysBox("lvday", l.days)}
+        <div class="row"><b style="font-size:14px">From</b>${timeSel("lvFrom", l.from)}<b style="font-size:14px">to</b>${timeSel("lvTo", l.to)}</div>
+        <div class="row"><button class="btn primary" id="saveLv">Save level</button><button class="btn danger" id="delLv">Delete level</button></div>
+        <p class="hint">Assigned to ${users.length}: ${users.map((p) => esc(p.name)).join(", ") || "nobody"}.</p></div>` : '<div class="panel"><p class="hint">No levels yet.</p></div>'}</div>`;
+  }
+  function credPill(c) { const cls = { active: "good", suspended: "warn", lost: "bad", revoked: "mute" }[c.status]; return `<span class="pill ${cls}">${c.status}</span>`; }
+  function vPeople() {
+    return `<div><h1>People and credentials</h1><p class="sub">A credential is what someone presents at the reader: a card or a phone. Access levels say where and when that person can go. Choose <b>Manage</b> to change both.</p></div>
+      <div class="panel"><h2>Temporary visitor pass</h2><div class="row"><label for="vName">Name</label><input type="text" id="vName" placeholder="Driver's name"><label for="vDoor">Door</label><select id="vDoor">${DOORS.map((d) => `<option value="${d.id}">${d.name}</option>`).join("")}</select><label for="vDay">Day</label><select id="vDay">${DAYORDER.map((d) => `<option value="${d}">${DAYN[d]}</option>`).join("")}</select>${timeSel("vFrom", 300)} to ${timeSel("vTo", 480)}<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="vExp" checked>Expires at end of day</label><button class="btn primary" id="vGo">Send mobile pass</button></div>
+        <p class="hint">The pass arrives by text message as a link that turns the driver's phone into a temporary credential.</p></div>
+      <div class="tablewrap"><table><thead><tr><th>Person</th><th>Role</th><th>Access levels</th><th>Credentials</th><th></th></tr></thead><tbody>
+      ${S.people.map((p) => `<tr><td><b>${esc(p.name)}</b>${p.note ? `<br><span class="hint">${esc(p.note)}</span>` : ""}</td><td>${ROLES[p.role].label}</td><td>${p.levels.map((id) => esc((level(id) || {}).name || "(deleted)")).join("<br>") || '<span class="hint">None</span>'}</td><td>${p.creds.map((c) => `${CTYPE[c.type].split(" (")[0]}${c.temp ? " (temporary)" : ""} ${credPill(c)}`).join("<br>") || '<span class="hint">None</span>'}</td><td><button class="btn small" data-person="${p.id}">Manage</button></td></tr>`).join("")}
+      </tbody></table></div>`;
+  }
+  let dlgPerson = null;
+  function personDialog(id, out) {
+    dlgPerson = id; const p = person(id);
+    $("#layer").innerHTML = `<div class="overlay"><div class="dialog" role="dialog" aria-modal="true"><h2>${esc(p.name)}</h2><p class="hint">${ROLES[p.role].label}. ${esc(p.note)}</p>
+      <p class="hint"><b>Angela's rule:</b> ${ROLES[p.role].rule}</p>
+      <h2>Access levels</h2><div class="doorchk">${S.levels.map((l) => `<label><input type="checkbox" class="plv" value="${l.id}" ${p.levels.includes(l.id) ? "checked" : ""}>${esc(l.name)}</label>`).join("")}</div>
+      <div class="row"><button class="btn small primary" id="savePlv">Save levels</button></div>
+      <h2>Credentials</h2><div>${p.creds.map((c) => `<div class="cred"><span>${CTYPE[c.type]}${c.temp ? " (temporary)" : ""} <span class="mono hint">${esc(c.num)}</span></span><select data-cred="${c.id}" aria-label="Status">${["active", "suspended", "lost", "revoked"].map((s) => `<option ${s === c.status ? "selected" : ""}>${s}</option>`).join("")}</select></div>`).join("") || '<p class="hint">None</p>'}</div>
+      <div class="row"><select id="newCred">${Object.entries(CTYPE).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select><button class="btn small" id="addCred">Issue credential</button></div>
+      <p class="hint"><b>Lost:</b> the card is turned off and any attempt to use it is flagged. <b>Revoked:</b> permanently turned off. <b>Suspended:</b> temporarily off.</p>
+      <div id="pOut">${out || ""}</div><div class="row" style="justify-content:flex-end"><button class="btn" id="pClose">Close</button></div></div></div>`;
+  }
+  function vTest() {
+    const t = S.test, p = person(t.person) || S.people[0], d = t.day, m = t.min;
+    let res;
+    if (unlocked(t.door, d, m)) res = `<div class="result notice info"><b>Door is unlocked on schedule.</b> Anyone can walk in right now, badge or not.</div>`;
+    else { const g = grantBy(p, t.door, d, m); const ac = activeCreds(p);
+      res = g ? `<div class="result notice good"><b>Granted.</b> ${esc(p.name)}'s ${CTYPE[ac[0].type]} matches the level "${esc(g.name)}".</div>`
+        : `<div class="result notice bad"><b>Denied.</b> ${!ac.length ? `${esc(p.name)} has no active credential.` : p.levels.length ? "None of this person's access levels includes this door at this time." : "This person has no access levels."}</div>`; }
+    return `<div><h1>Test a badge</h1><p class="sub">Pick a person, a door, a day and a time to see whether the door would open. Use it to check your work before you trust it.</p></div>
+      <div class="panel"><div class="row"><label for="tP">Person</label><select id="tP">${S.people.map((x) => `<option value="${x.id}" ${x.id === p.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
+      <label for="tD">Door</label><select id="tD">${DOORS.map((x) => `<option value="${x.id}" ${x.id === t.door ? "selected" : ""}>${x.name}</option>`).join("")}</select>
+      <label for="tDay">Day</label><select id="tDay">${DAYORDER.map((x) => `<option value="${x}" ${x === d ? "selected" : ""}>${DAYN[x]}</option>`).join("")}</select>
+      <label for="tMin">Time</label><select id="tMin">${Array.from({ length: 96 }, (_, i) => i * 15).map((x) => `<option value="${x}" ${x === m ? "selected" : ""}>${hm(x)}</option>`).join("")}</select></div>${res}</div>`;
+  }
+  function vEvents() {
+    return `<div><h1>Access log</h1><p class="sub">Every badge read is recorded: when, which door, whose credential and whether it worked. Highlighted rows are the ones Angela asked about. Read the log, then answer her questions.</p></div>
+      <div class="tablewrap"><table class="ev"><thead><tr><th>When</th><th>Door</th><th>Person</th><th>Credential</th><th>Result</th><th>Note</th></tr></thead><tbody>
+      ${EVENTS.map((e) => `<tr class="${e[5] === "flag" ? "flag" : ""}"><td class="mono">${e[0]}</td><td>${e[1]}</td><td>${esc(e[2])}</td><td class="mono">${e[3]}</td><td>${e[4] === "Denied" ? '<span class="pill bad">Denied</span>' : e[4] === "Unlocked" ? '<span class="pill warn">Unlocked</span>' : '<span class="pill good">Granted</span>'}</td><td class="hint">${e[5] === "flag" ? "" : esc(e[5])}</td></tr>`).join("")}
+      </tbody></table></div>
+      <div class="panel"><h2>Angela's questions</h2>${QUESTIONS.map((q, i) => `<div class="q"><b>${i + 1}. ${q.t}</b>${q.opts.map(([k, txt]) => `<label><input type="radio" name="${q.id}" data-q="${q.id}" value="${k}" ${S.answers[q.id] === k ? "checked" : ""}><span>${txt}</span></label>`).join("")}${S.answers[q.id] ? (S.answers[q.id] === q.ans ? '<span class="pill good">Correct</span>' : '<span class="pill bad">Look at the log and the HR notes again</span>') : ""}</div>`).join("")}</div>`;
+  }
+  function vPrivacy() {
+    const sel = (id, opts, v) => `<select id="${id}">${opts.map((o) => `<option ${o === v ? "selected" : ""}>${o}</option>`).join("")}</select>`;
+    return `<div><h1>Privacy settings</h1><p class="sub">The access log can show where every employee went, every day. That's useful for investigating a theft and risky if anyone can browse it. Set rules for how long it's kept and who can see it.</p></div>
+      <div class="panel">
+        <div class="policy"><div><b>Keep badge logs for</b><p class="help">Long enough to investigate incidents, short enough that years of everyone's movements aren't sitting around. Check your company's legal and insurance requirements.</p></div>${sel("ret", ["30 days", "90 days", "1 year", "Forever"], S.privacy.retention)}</div>
+        <div class="policy"><div><b>Who can run reports on a person's badge history</b><p class="help">Investigations should go through security, not curious coworkers or supervisors checking when someone took a break.</p></div>${sel("rep", ["Every admin and supervisor", "Supervisors only", "Security admins only"], S.privacy.reports)}</div>
+        <div class="policy"><div><b>Employee notice</b><p class="help">Tell employees what the door system records, how long it's kept and when it's reviewed.</p></div><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="notice" ${S.privacy.notice ? "checked" : ""}>Notice posted in the handbook and break room</label></div>
+      </div>`;
+  }
+  function vMissions() {
+    const ms = missions();
+    return `<div><h1>Angela's checklist</h1><p class="sub">Each item checks itself as soon as the system meets it. Use Test a badge to see why something isn't passing.</p></div>
+      <div class="panel">${ms.map((m, i) => `<div class="mission"><span class="check ${m.ok ? "done" : "todo"}">${m.ok ? "✓" : i + 1}</span><div><b>${m.t}</b><p class="hint">${m.d}</p></div></div>`).join("")}</div>`;
+  }
+  function logHTML(n) { return `<div class="log">${S.log.slice(0, n).map((l) => `<div><time>${l.t}</time><span>${esc(l.m)}</span></div>`).join("")}</div>`; }
+  function vLog() { return `<div><h1>Activity log</h1><p class="sub">Every change an admin makes, newest first. This is separate from the access log: it shows who changed the system, which matters just as much.</p></div><div class="panel">${logHTML(300)}</div>`; }
+  function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).toUpperCase().padStart(7, "0"); }
+  function reportText() {
+    const ms = missions();
+    const body = [
+      "Building Access Simulator report (Northshore Distribution)",
+      `Admin: ${S.student || "(name not entered)"}`,
+      `Generated: ${new Date().toLocaleString()}`,
+      `Checklist: ${ms.filter((m) => m.ok).length} of ${ms.length} complete`,
+      ...ms.map((m) => `  [${m.ok ? "x" : " "}] ${m.t}`),
+      "", "Access levels:", ...S.levels.map((l) => `  ${l.name}: ${l.doors.map(doorName).join(", ") || "(no doors)"} | ${daysText(l.days)} ${hm(l.from)}-${hm(l.to)}`),
+      "", "People:", ...S.people.map((p) => `  ${p.name} (${ROLES[p.role].label}): levels ${p.levels.map((id) => (level(id) || {}).name).join("; ") || "none"} | ${p.creds.map((c) => `${c.type}${c.temp ? "-temp" : ""}:${c.status}`).join(", ") || "no credentials"}`),
+      "", "Doors:", ...DOORS.map((d) => { const u = S.doors[d.id].unlock; return `  ${d.name}: ${u ? `unlocks ${daysText(u.days)} ${hm(u.from)}-${hm(u.to)}` : "no unlock schedule"}; fail-${S.doors[d.id].fail}`; }),
+      "", `Investigation answers: ${QUESTIONS.map((q, i) => `Q${i + 1}=${S.answers[q.id] || "-"}`).join(" ")}`,
+      `Privacy: logs kept ${S.privacy.retention}; reports: ${S.privacy.reports}; employee notice ${S.privacy.notice ? "posted" : "not posted"}`,
+      "", `Changes logged: ${S.log.length}`,
+    ].join("\n");
+    return body + `\nVerification code: ${hash((S.student || "") + "|" + body.replace(/Generated: .*\n/, ""))}`;
+  }
+  function vReport() {
+    return `<div><h1>Submit report</h1><p class="sub">Enter your name, then copy this report into your Solve It submission. The verification code changes whenever your setup or name changes.</p></div>
+      <div class="panel"><div class="row"><label for="stuName">Your name</label><input type="text" id="stuName" value="${esc(S.student)}" placeholder="First and last name"><button class="btn primary" id="saveName">Save name</button></div></div>
+      <div class="panel"><div class="row" style="justify-content:space-between"><h2>Configuration report</h2><button class="btn" id="copyRep">Copy report</button></div>
+      <div class="tablewrap" style="border:none"><pre class="mono" id="repText" style="margin:0;white-space:pre-wrap;font-size:13px">${esc(reportText())}</pre></div></div>`;
+  }
+  function render() {
+    renderNav();
+    const v = { home: vHome, doors: vDoors, levels: vLevels, people: vPeople, test: vTest, events: vEvents, privacy: vPrivacy, missions: vMissions, log: vLog, report: vReport }[S.view] || vHome;
+    $("#work").innerHTML = v();
+    save();
+  }
+  const closeDialog = () => { $("#layer").innerHTML = ""; dlgPerson = null; };
+  const checked = (cls) => [...document.querySelectorAll("." + cls + ":checked")].map((x) => x.value);
+
+  // ---------- Events ----------
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button"); if (!t || t.disabled) return;
+    if (t.dataset.view) { S.view = t.dataset.view; render(); return; }
+    if (t.dataset.lv) { S.selLevel = t.dataset.lv; render(); return; }
+    if (t.dataset.person) { personDialog(t.dataset.person); return; }
+    if (t.dataset.saveunlock) { const id = t.dataset.saveunlock, days = checked("ud-" + id).map(Number), f = +$("#uf-" + id).value, to = +$("#ut-" + id).value;
+      if (!days.length || f >= to) { toast("Pick at least one day and an end time after the start."); return; }
+      S.doors[id].unlock = { days, from: f, to }; log(`${doorName(id)}: unlocks ${daysText(days)} ${hm(f)} to ${hm(to)}.`); render(); toast("Schedule saved."); return; }
+    switch (t.id) {
+      case "resetBtn": $("#layer").innerHTML = `<div class="overlay"><div class="dialog" role="dialog" aria-modal="true"><h2>Reset the simulator?</h2><p>This erases your levels, people changes and log.</p><div class="row" style="justify-content:flex-end"><button class="btn" id="rsCancel">Keep my work</button><button class="btn danger" id="rsGo">Reset</button></div></div></div>`; break;
+      case "rsCancel": case "pClose": closeDialog(); render(); break;
+      case "rsGo": S = seed(); closeDialog(); render(); toast("Simulator reset."); break;
+      case "addLv": { const n = $("#newLv").value.trim(); if (!n) { toast("Name the level."); return; } const id = "lv-" + Date.now().toString(36) + S.levels.length; S.levels.push({ id, name: n, doors: [], days: [], from: 0, to: 1440 }); S.selLevel = id; log(`Created access level "${n}".`); render(); break; }
+      case "saveLv": { const l = level(S.selLevel), f = +$("#lvFrom").value, to = +$("#lvTo").value; if (f >= to) { toast("The end time must be after the start time."); return; }
+        Object.assign(l, { name: $("#lvName").value.trim() || l.name, doors: checked("lvdoor"), days: checked("lvday").map(Number), from: f, to }); log(`Saved level "${l.name}": ${l.doors.map(doorName).join(", ") || "no doors"}, ${daysText(l.days)} ${hm(f)} to ${hm(to)}.`); render(); toast("Level saved."); break; }
+      case "delLv": { const l = level(S.selLevel); S.levels = S.levels.filter((x) => x !== l); S.people.forEach((p) => { p.levels = p.levels.filter((x) => x !== l.id); }); S.selLevel = (S.levels[0] || {}).id; log(`Deleted level "${l.name}" and removed it from everyone.`); render(); break; }
+      case "savePlv": { const p = person(dlgPerson); p.levels = checked("plv"); log(`${p.name}: access levels set to ${p.levels.map((id) => level(id).name).join(", ") || "none"}.`); render(); personDialog(p.id, '<div class="notice good">Levels saved.</div>'); break; }
+      case "addCred": { const p = person(dlgPerson), ty = $("#newCred").value, num = ty === "mobile" ? p.name.split(" ").map((x) => x[0]).join("") + "-phone" : String(50000 + Math.floor(Math.random() * 9000));
+        p.creds.push({ id: "c" + Date.now().toString(36), type: ty, num, status: "active" }); log(`Issued ${CTYPE[ty].toLowerCase()} to ${p.name}.`); render(); personDialog(p.id, `<div class="notice good">${CTYPE[ty]} issued${ty === "mobile" ? ". An invite was sent to their phone" : ""}.</div>`); break; }
+      case "vGo": { const n = $("#vName").value.trim(), door = $("#vDoor").value, day = +$("#vDay").value, f = +$("#vFrom").value, to = +$("#vTo").value;
+        if (!n) { toast("Enter the visitor's name."); return; } if (f >= to) { toast("The end time must be after the start time."); return; }
+        const lid = "lv-v" + Date.now().toString(36); S.levels.push({ id: lid, name: `Visitor: ${n}`, doors: [door], days: [day], from: f, to });
+        S.people.push({ id: "pv" + Date.now().toString(36), name: n, role: "visitor", note: `Temporary pass for ${doorName(door)}.`, levels: [lid], creds: [{ id: "cv" + Date.now().toString(36), type: "mobile", num: "temp-pass", status: "active", temp: $("#vExp").checked }] });
+        log(`Sent a ${$("#vExp").checked ? "temporary" : "NON-EXPIRING"} mobile pass to ${n}: ${doorName(door)}, ${DAYN[day]} ${hm(f)} to ${hm(to)}.`); render(); toast("Visitor pass sent."); break; }
+      case "saveName": S.student = $("#stuName").value.trim(); log(`Admin name set to "${S.student}".`); render(); toast("Name saved."); break;
+      case "copyRep": { const txt = $("#repText").textContent; const fb = () => { const r = document.createRange(); r.selectNodeContents($("#repText")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Report selected. Press Ctrl + C (or Cmd + C) to copy."); };
+        try { navigator.clipboard.writeText(txt).then(() => toast("Report copied."), fb); } catch (err) { fb(); } break; }
+    }
+  });
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.dataset.cred) { const p = person(dlgPerson), c = p.creds.find((x) => x.id === t.dataset.cred); c.status = t.value; log(`${p.name}: ${CTYPE[c.type].toLowerCase()} ${c.num} set to ${t.value}.`); render(); personDialog(p.id); }
+    else if (t.dataset.fail) { S.doors[t.dataset.fail].fail = t.value; log(`${doorName(t.dataset.fail)}: power-failure mode set to fail-${t.value}.`); render(); }
+    else if (t.id && t.id.startsWith("us-")) { const id = t.id.slice(3); S.doors[id].unlock = t.value === "none" ? null : { days: WEEKDAYS.slice(), from: 480, to: 1020 }; log(`${doorName(id)}: ${t.value === "none" ? "unlock schedule removed" : "unlock schedule added (edit and save it)"}.`); render(); }
+    else if (t.dataset.q) { S.answers[t.dataset.q] = t.value; const q = QUESTIONS.find((x) => x.id === t.dataset.q); log(`Answered investigation question ${QUESTIONS.indexOf(q) + 1}: ${t.value === q.ans ? "correct" : "incorrect"}.`); render(); }
+    else if (["tP", "tD", "tDay", "tMin"].includes(t.id)) { S.test = { person: $("#tP").value, door: $("#tD").value, day: +$("#tDay").value, min: +$("#tMin").value }; render(); }
+    else if (t.id === "ret") { S.privacy.retention = t.value; log(`Badge logs kept for: ${t.value}.`); render(); }
+    else if (t.id === "rep") { S.privacy.reports = t.value; log(`Badge history reports: ${t.value}.`); render(); }
+    else if (t.id === "notice") { S.privacy.notice = t.checked; log(`Employee notice ${t.checked ? "posted" : "removed"}.`); render(); }
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("#layer .overlay")) { closeDialog(); render(); } });
+  render();
+})();
+</script>
+
+</body>
+</html>

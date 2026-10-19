@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MDM Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a console shell. Left rail of sections, top context bar (org unit + licenses), work area on the right. Collapses to a top tab strip on phones. */
+:root {
+  --bg: #f3f6f6; --panel: #ffffff; --ink: #172327; --muted: #5b6b70; --line: #d6e1df;
+  --accent: #0e7c7b; --accent-ink: #ffffff; --accent-soft: #e2f1f0; --amber: #e8a33d; --amber-soft: #fbefdb;
+  --good: #2e7d4f; --good-soft: #e3f3e8; --warn: #9a6200; --warn-soft: #fff3d6; --bad: #b5482f; --bad-soft: #f9e3dd;
+  --rail: #12343b; --rail-ink: #e8f1f0; --rail-muted: #9fb7b5;
+  --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.45; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.mono { font-family: var(--font-mono); font-size: 0.9em; }
+.shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100%; }
+.rail { background: var(--rail); color: var(--rail-ink); padding-block: 18px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; display: flex; flex-direction: column; gap: 18px; }
+.brand { display: grid; gap: 2px; }
+.brand b { font-size: 17px; letter-spacing: 0.01em; }
+.brand span { color: var(--rail-muted); font-size: 12px; }
+.nav { display: grid; gap: 2px; }
+.nav button { all: unset; cursor: pointer; padding: 8px 10px; border-radius: 6px; color: var(--rail-ink); display: flex; justify-content: space-between; gap: 8px; }
+.nav button:hover { background: rgba(255,255,255,0.07); }
+.nav button[aria-current="page"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.nav button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.nav .count { font-family: var(--font-mono); font-size: 12px; opacity: 0.85; }
+.rail-foot { margin-top: auto; color: var(--rail-muted); font-size: 12px; display: grid; gap: 8px; }
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding-block: 12px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--panel); border-bottom: 1px solid var(--line); }
+.topbar .ctx { color: var(--muted); font-size: 13px; }
+.topbar .ctx b { color: var(--ink); }
+.lic { margin-left: auto; display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+.meter { width: 120px; height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.work { padding-block: 20px 40px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; align-content: start; }
+h1 { font-size: 24px; margin: 0; text-wrap: balance; }
+h2 { font-size: 17px; margin: 0; }
+p { margin: 0; }
+.sub { color: var(--muted); max-width: 70ch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 4px; }
+.tile .n { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile .l { color: var(--muted); font-size: 13px; }
+.btn { cursor: pointer; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 12px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.small { padding: 3px 8px; font-size: 13px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+input[type=text], select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+textarea { width: 100%; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tree { display: grid; gap: 2px; }
+.tree button { all: unset; cursor: pointer; padding: 5px 8px; border-radius: 6px; display: flex; gap: 6px; align-items: center; }
+.tree button:hover { background: var(--accent-soft); }
+.tree button[aria-selected="true"] { background: var(--accent-soft); font-weight: 700; box-shadow: inset 3px 0 0 var(--accent); }
+.tree button:focus-visible { outline: 2px solid var(--amber); }
+.tree .twig { color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: pre; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--accent-soft); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: none; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.mute { background: var(--line); color: var(--muted); }
+.policy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 300px); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.policy:last-child { border-bottom: none; }
+.policy .help { color: var(--muted); font-size: 13px; }
+.src { font-size: 12px; color: var(--muted); }
+.src.local { color: var(--accent); font-weight: 700; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { all: unset; cursor: pointer; padding: 8px 12px; border-bottom: 3px solid transparent; }
+.tabs button[aria-selected="true"] { border-color: var(--accent); font-weight: 700; }
+.tabs button:focus-visible { outline: 2px solid var(--amber); }
+.mission { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.mission:last-child { border-bottom: none; }
+.check { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.check.done { background: var(--good); color: var(--panel); }
+.check.todo { border: 2px solid var(--line); color: var(--muted); }
+.hint { color: var(--muted); font-size: 13px; }
+.ticket { background: var(--amber-soft); border: 1px solid var(--amber); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 4px; }
+.ticket b { color: var(--ink); }
+.log { display: grid; gap: 0; }
+.log div { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.log time { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.notice { border-radius: var(--r); padding: 10px 12px; font-size: 14px; }
+.notice.bad { background: var(--bad-soft); color: var(--bad); }
+.notice.good { background: var(--good-soft); color: var(--good); }
+.notice.info { background: var(--accent-soft); color: var(--ink); }
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--rail); color: var(--rail-ink); padding: 10px 14px; border-radius: var(--r); box-shadow: 0 6px 24px rgba(0,0,0,0.25); max-width: min(360px, calc(100vw - 32px)); }
+/* Chromebook preview */
+.laptop { width: 100%; max-width: 640px; }
+.screen { aspect-ratio: 16 / 10; max-width: 100%; border: 10px solid #1e2427; border-radius: 12px 12px 4px 4px; position: relative; overflow: hidden; background: #24343a; color: #fff; }
+.base { height: 14px; background: #2c3438; border-radius: 0 0 14px 14px; margin: 0 -4%; }
+.wall-school { background: radial-gradient(circle at 30% 30%, #1b8f8c, #0b3d42 70%); }
+.wall-free { background: repeating-linear-gradient(45deg, #b04ad1 0 24px, #ff8a00 24px 48px, #2ec4ff 48px 72px); }
+.desk { position: absolute; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 12px; gap: 8px; }
+.wall-label { font-size: 13px; background: rgba(0,0,0,0.35); padding: 4px 8px; border-radius: 6px; justify-self: start; }
+.browser { background: #fff; color: #172327; border-radius: 8px; align-self: center; justify-self: center; width: min(88%, 460px); padding: 10px; display: grid; gap: 8px; font-size: 13px; }
+.browser .bar { display: flex; gap: 6px; }
+.browser input { flex: 1; background: #eef3f3; border: 1px solid #c9d6d4; color: #172327; }
+.shelf { justify-self: center; display: flex; gap: 6px; background: rgba(0,0,0,0.45); padding: 6px 10px; border-radius: 99px; flex-wrap: wrap; justify-content: center; }
+.shelf span { background: rgba(255,255,255,0.9); color: #172327; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+.lock { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px; padding: 20px; background: #0d1416; }
+.lock .msg { max-width: 40ch; font-size: 15px; }
+.kiosk { position: absolute; inset: 0; background: #f4f7fb; color: #172327; display: grid; place-content: center; text-align: center; gap: 8px; padding: 16px; }
+.signin { position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; text-align: center; background: #20323a; }
+.signin .card { background: #fff; color: #172327; border-radius: 10px; padding: 16px 20px; display: grid; gap: 8px; min-width: 220px; }
+.overlay { position: fixed; inset: 0; background: rgba(8,16,18,0.55); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.dialog { background: var(--panel); border-radius: 12px; border: 1px solid var(--line); width: min(540px, 100%); max-height: 90vh; overflow: auto; padding: 18px; display: grid; gap: 12px; }
+.disclaimer { font-size: 12px; color: var(--muted); }
+@media (max-width: 760px) {
+  .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .rail { padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 10px; }
+  .nav { grid-auto-flow: column; overflow-x: auto; }
+  .nav button { white-space: nowrap; }
+  .rail-foot { display: none; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .policy { grid-template-columns: minmax(0, 1fr); }
+  .lic { margin-left: 0; }
+  .topbar, .work { padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+}
+@media (prefers-reduced-motion: no-preference) { .nav button, .btn, .tree button { transition: background 0.15s, border-color 0.15s; } }
+</style>
+<style>
+/* MDM additions: phone mockups and platform chips */
+body { margin: 0; }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.chip.apple { background: var(--line); color: var(--ink); }
+.chip.android { background: var(--good-soft); color: var(--good); }
+.devrow { cursor: pointer; }
+.devrow:hover td { background: var(--accent-soft); }
+.phones { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.phone { width: 230px; max-width: 100%; aspect-ratio: 9 / 19; border-radius: 34px; background: #111; padding: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.25); position: relative; }
+.phone.android { border-radius: 22px; }
+.phone.tablet { width: 340px; aspect-ratio: 4 / 3; border-radius: 22px; }
+.phone .scr { width: 100%; height: 100%; border-radius: 26px; overflow: hidden; position: relative; background: linear-gradient(160deg, #2b5876, #4e4376); color: #fff; display: grid; grid-template-rows: auto 1fr auto; padding: 18px 12px 12px; gap: 8px; font-size: 12px; }
+.phone.android .scr { border-radius: 14px; background: linear-gradient(160deg, #0f4c3a, #1d7a5c); }
+.phone.tablet .scr { border-radius: 14px; }
+.scr .clock { font-size: 34px; font-weight: 700; text-align: center; line-height: 1; }
+.scr .icons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; align-content: start; }
+.phone.tablet .scr .icons { grid-template-columns: repeat(6, 1fr); }
+.scr .app { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: grid; justify-items: center; gap: 3px; text-align: center; font-size: 10px; line-height: 1.1; }
+.scr .app i { width: 38px; height: 38px; border-radius: 10px; background: rgba(255,255,255,0.88); color: #12343b; display: grid; place-items: center; font-style: normal; font-weight: 700; font-size: 12px; position: relative; }
+.scr .app i b { position: absolute; right: -4px; bottom: -4px; background: #e8a33d; color: #12343b; border-radius: 50%; width: 16px; height: 16px; font-size: 9px; display: grid; place-items: center; }
+.scr .app.blocked i { background: rgba(255,255,255,0.35); color: rgba(255,255,255,0.8); text-decoration: line-through; }
+.scr .note { background: rgba(0,0,0,0.38); border-radius: 10px; padding: 6px 8px; font-size: 11px; display: grid; gap: 2px; }
+.scr.lost { background: #0b0f10 !important; place-content: center; text-align: center; grid-template-rows: none; gap: 10px; }
+.scr.setup { background: #f2f4f5 !important; color: #172327; place-content: center; text-align: center; grid-template-rows: none; }
+.scr.single { background: #f4f7fb !important; color: #172327; place-content: center; text-align: center; grid-template-rows: none; gap: 6px; }
+.seetable td:nth-child(2), .seetable td:nth-child(3) { text-align: center; }
+.yes { color: var(--good); font-weight: 700; }
+.no { color: var(--bad); font-weight: 700; }
+.stepper { display: grid; gap: 10px; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; font-size: 14px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; }
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <a href="index.html" class="hub-back" style="color:var(--rail-ink);font-size:13px;text-decoration:underline;text-underline-offset:3px">&larr; All simulators</a><div class="brand"><b>MDM Console</b><span>Riverbend Family Clinic · training</span></div>
+    <nav class="nav" id="nav" aria-label="Sections"></nav>
+    <div class="rail-foot">
+      <span>MDM Simulator for 10-150-164 Mobile Devices. A practice tool modeled on mobile device management consoles; not a vendor product and not affiliated with Apple, Google or any MDM company. Riverbend Family Clinic and its staff are fictional.</span>
+      <button class="btn small" id="resetBtn" style="color:var(--rail-ink);background:transparent;border-color:var(--rail-muted)">Reset simulator</button>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="ctx">Organization <b>Riverbend Family Clinic</b></div>
+      <div class="ctx" id="whoCtx"></div>
+      <div class="lic" id="lic"></div>
+    </header>
+    <main class="work" id="work"></main>
+  </div>
+</div>
+<div id="layer"></div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // ---------- Catalog ----------
+  const SETTINGS = [
+    { key: "passcodeMin", label: "Minimum passcode", plat: "both", options: ["No passcode required", "4 digits", "6 digits", "8 characters"], def: "No passcode required", help: "A passcode is the first line of defense for patient data. Short passcodes can be guessed." },
+    { key: "complexity", label: "Passcode complexity", plat: "both", options: ["Simple allowed (1234 is OK)", "No repeating or sequential digits"], def: "Simple allowed (1234 is OK)", help: "Blocks easy patterns like 1111 or 1234." },
+    { key: "autoLock", label: "Auto-lock", plat: "both", options: ["Never", "5 minutes", "2 minutes", "1 minute"], def: "Never", help: "Locks the screen when a phone is left on a counter. Shorter is safer." },
+    { key: "biometrics", label: "Face or fingerprint unlock", plat: "both", options: ["Allow", "Block"], def: "Allow", help: "Biometrics make a long passcode easier to live with. Most clinics allow it." },
+    { key: "encryption", label: "Storage encryption", plat: "android", options: ["Not required", "Required"], def: "Not required", help: "iPhones and iPads encrypt automatically once a passcode is set. Android devices should be told to require it." },
+    { key: "osUpdates", label: "OS updates", plat: "both", company: true, options: ["User decides", "Install automatically overnight"], def: "User decides", help: "Company devices only. Updates patch security holes." },
+    { key: "camera", label: "Camera", plat: "both", company: true, options: ["Allow", "Block"], def: "Allow", help: "Company devices only. IT can't turn off the camera on an employee's own phone." },
+    { key: "appInstalls", label: "App installs", plat: "both", company: true, options: ["Any app", "Approved apps only"], def: "Any app", help: "Company devices only. Personal phones keep their own app store." },
+    { key: "dataSharing", label: "Work data in personal apps", plat: "both", options: ["Allowed", "Block copying work data into personal apps"], def: "Allowed", help: "Stops someone pasting a patient note into a personal text or social app. Key for personal (BYOD) phones." },
+    { key: "wifi", label: "Wi-Fi profile", plat: "both", options: ["None", "Riverbend-Staff (WPA2-Enterprise)"], def: "None", help: "Pushes the staff network so nobody needs to know a shared password." },
+    { key: "vpn", label: "VPN", plat: "both", options: ["Off", "Always-on Clinic VPN"], def: "Off", help: "Encrypts traffic back to the clinic, useful for home health visits on public networks." },
+    { key: "singleApp", label: "Single app mode", plat: "ios", tablet: true, company: true, options: ["Off", "Lock to Patient Check-In"], def: "Off", help: "Supervised company iPads only. Locks the screen to one app, like a kiosk." },
+  ];
+  const APPS = [
+    { id: "chartpro", name: "ChartPro EHR", ab: "CP", note: "Electronic health records" },
+    { id: "securechat", name: "SecureChat", ab: "SC", note: "Encrypted staff messaging" },
+    { id: "vpnapp", name: "Clinic VPN", ab: "VP", note: "Connects back to the clinic network" },
+    { id: "timeclock", name: "TimeClock", ab: "TC", note: "Clock in and out" },
+    { id: "checkin", name: "Patient Check-In", ab: "PC", note: "Front desk sign-in for patients" },
+    { id: "clipster", name: "Clipster", ab: "CL", note: "Social video app (not for work)" },
+  ];
+  const METHODS = {
+    ade: { label: "Automated Device Enrollment (company device listed in Apple Business Manager)", short: "ADE (supervised)", plat: "ios" },
+    userEnroll: { label: "User Enrollment (personal iPhone; separate work space)", short: "User Enrollment", plat: "ios" },
+    fullyManaged: { label: "Fully managed (company-owned Android)", short: "Fully managed", plat: "android" },
+    workProfile: { label: "Work profile (personal Android; separate work space)", short: "Work profile", plat: "android" },
+  };
+  const NURSE_IPHONES = ["RFC-IP-01", "RFC-IP-02", "RFC-IP-03", "RFC-IP-04", "RFC-IP-05"];
+  const HH_PHONES = ["RFC-AN-01", "RFC-AN-02", "RFC-AN-03"];
+  const LOST = "RFC-IP-02", OLD = "RFC-AN-OLD", KAYLA = "BYOD-KB", DEVON = "BYOD-DW";
+
+  function seed() {
+    const dev = (o) => Object.assign({ group: null, method: null, status: "staged", setUp: false, inABM: false, jailbroken: false, lost: false, lostMsg: "", lostPhone: "", form: "phone", note: "" }, o);
+    const ip = { platform: "ios", ownership: "company", os: 18.3, latest: 18.4 };
+    const an = { platform: "android", ownership: "company", os: 14, latest: 14 };
+    const devices = [
+      dev(Object.assign({}, ip, { id: "RFC-IP-01", name: "Nurse iPhone 1", user: "Alicia Moreno, RN", os: 18.2, inABM: true, status: "enrolled", method: "ade", group: "g-nurses" })),
+      dev(Object.assign({}, ip, { id: LOST, name: "Nurse iPhone 2", user: "Sam Rivera, RN", os: 18.1, inABM: true, status: "enrolled", method: "ade", group: "g-nurses", note: "Sam reported this phone lost after a home visit." })),
+      dev(Object.assign({}, ip, { id: "RFC-IP-03", name: "Nurse iPhone 3", user: "Priya Shah, RN", inABM: true, note: "New in the box. Ordered through the clinic's Apple business account." })),
+      dev(Object.assign({}, ip, { id: "RFC-IP-04", name: "Nurse iPhone 4", user: "Marcus Lee, RN", inABM: true, note: "New in the box. Ordered through the clinic's Apple business account." })),
+      dev(Object.assign({}, ip, { id: "RFC-IP-05", name: "Nurse iPhone 5", user: "Maria Lopez, RN", inABM: false, setUp: true, note: "Clinic-owned. After Maria's phone scare, the clinic bought her this iPhone at a phone store instead of through its Apple business account. Maria already set it up." })),
+      dev(Object.assign({}, ip, { id: "RFC-PAD-01", name: "Front Desk iPad 1", user: "Front desk (shared)", form: "tablet", os: 18.1, inABM: true, status: "enrolled", method: "ade", group: "g-front" })),
+      dev(Object.assign({}, ip, { id: "RFC-PAD-02", name: "Front Desk iPad 2", user: "Front desk (shared)", form: "tablet", os: 18.1, inABM: true, status: "enrolled", method: "ade", group: "g-front" })),
+      dev(Object.assign({}, an, { id: "RFC-AN-01", name: "Home Health Phone 1", user: "Tess Novak, LPN", note: "New in the box." })),
+      dev(Object.assign({}, an, { id: "RFC-AN-02", name: "Home Health Phone 2", user: "Luis Ortega, CNA", note: "New in the box." })),
+      dev(Object.assign({}, an, { id: "RFC-AN-03", name: "Home Health Phone 3", user: "Grace Kim, RN", setUp: true, note: "Grace got excited and already set it up with her own account." })),
+      dev(Object.assign({}, an, { id: OLD, name: "Spare Android phone", user: "On-call spare", os: 12, status: "enrolled", method: "fullyManaged", note: "Enrolled last year, but nobody has updated it." })),
+      dev({ id: KAYLA, name: "Kayla's phone", user: "Kayla Brooks, aide (personal phone)", platform: "android", ownership: "personal", os: 14, latest: 14, note: "Kayla wants SecureChat on her own phone. Her last day is Friday." }),
+      dev({ id: DEVON, name: "Devon's iPhone", user: "Devon White, billing (personal phone)", platform: "ios", ownership: "personal", os: 17.6, latest: 18.4, jailbroken: true, note: "Devon wants work apps on his own iPhone. He mentioned he 'unlocked it to install some tweaks.'" }),
+    ];
+    return {
+      v: 1, student: "", groups: [{ id: "g-nurses", name: "Nurses" }, { id: "g-front", name: "Front Desk" }], devices,
+      prof: { baseline: {} }, apps: { baseline: {} },
+      comp: { minIOS: "None", minAndroid: "None", blockCompromised: "Off", requirePasscode: "Off", requireEncryption: "Off", conditionalAccess: "Off" },
+      log: [{ t: stamp(), m: "Simulator started. 5 devices enrolled, 8 waiting to enroll, 1 reported lost." }],
+      view: "home", scope: "baseline", enSel: "RFC-IP-03", previewId: "RFC-IP-01", fgrp: "all",
+    };
+  }
+  function stamp() { return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+
+  // ---------- State ----------
+  const KEY = "md-mdm-sim-v1";
+  let S;
+  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+  if (!S || S.v !== 1) S = seed();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage blocked: keep working in memory */ } }
+  function log(m) { S.log.unshift({ t: stamp(), m }); if (S.log.length > 300) S.log.length = 300; }
+  let toastTimer;
+  function toast(m) { const l = $("#layer"); const old = l.querySelector(".toast"); if (old) old.remove(); const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); t.textContent = m; l.appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 3400); }
+
+  // ---------- Model helpers ----------
+  const devById = (id) => S.devices.find((d) => d.id === id);
+  const grpById = (id) => S.groups.find((g) => g.id === id);
+  const grpName = (id) => (id ? (grpById(id) || {}).name || "(deleted group)" : "No group");
+  const findGroup = (name) => S.groups.find((g) => g.name.trim().toLowerCase() === name.toLowerCase());
+  const scopeName = (s) => (s === "baseline" ? "Baseline (all devices)" : grpName(s));
+  const enrolled = () => S.devices.filter((d) => d.status === "enrolled");
+  const platName = (d) => (d.platform === "ios" ? (d.form === "tablet" ? "iPadOS" : "iOS") : "Android");
+  const osText = (d) => `${platName(d)} ${d.os}`;
+  const setting = (k) => SETTINGS.find((s) => s.key === k);
+  function eff(gid, key) {
+    const g = gid && S.prof[gid];
+    if (g && key in g) return { value: g[key], from: gid };
+    if (key in S.prof.baseline) return { value: S.prof.baseline[key], from: "baseline" };
+    return { value: setting(key).def, from: null };
+  }
+  function appEff(gid, appId) {
+    const g = gid && S.apps[gid];
+    if (g && appId in g) return { value: g[appId], from: gid };
+    if (appId in S.apps.baseline) return { value: S.apps.baseline[appId], from: "baseline" };
+    return { value: "Not set", from: null };
+  }
+  const idx = (key, v) => setting(key).options.indexOf(v);
+  function applies(d, s) {
+    if (s.plat === "android" && d.platform !== "android") return false;
+    if (s.plat === "ios" && d.platform !== "ios") return false;
+    if (s.tablet && d.form !== "tablet") return false;
+    if (s.company && d.ownership !== "company") return false;
+    return true;
+  }
+  const dEff = (d, key) => eff(d.group, key).value;
+  function compliance(d) {
+    if (d.status !== "enrolled") return null;
+    const c = S.comp, r = [];
+    if (d.jailbroken && c.blockCompromised === "On") r.push(d.platform === "ios" ? "Jailbroken" : "Rooted");
+    if (d.platform === "ios" && c.minIOS !== "None" && d.os < Number(c.minIOS)) r.push(`${osText(d)} is below the minimum (${c.minIOS})`);
+    if (d.platform === "android" && c.minAndroid !== "None" && d.os < Number(c.minAndroid)) r.push(`Android ${d.os} is below the minimum (${c.minAndroid})`);
+    if (c.requirePasscode === "On" && idx("passcodeMin", dEff(d, "passcodeMin")) === 0) r.push("No passcode required by profile");
+    if (c.requireEncryption === "On" && d.platform === "android" && dEff(d, "encryption") !== "Required") r.push("Storage encryption not required");
+    return { ok: r.length === 0, reasons: r };
+  }
+  function caBlocked(d) { const c = compliance(d); return !!(c && !c.ok && S.comp.conditionalAccess === "On"); }
+  const hasPhone = (s) => /\d{3}\D?\d{4}/.test(s || "");
+
+  // ---------- Missions ----------
+  function missions() {
+    const hh = findGroup("Home Health"), by = findGroup("BYOD Staff"), nurses = findGroup("Nurses"), front = findGroup("Front Desk");
+    const k = devById(KAYLA), dv = devById(DEVON), old = devById(OLD), sam = devById(LOST);
+    const en = enrolled();
+    const req = (g, a) => g && appEff(g.id, a).value === "Required";
+    return [
+      { t: "Create the Home Health and BYOD Staff groups", d: "Groups decide which settings and apps a device gets. Home health nurses work in patients' homes; BYOD Staff is for people using their own phones.", ok: !!(hh && by) },
+      { t: "Enroll every nurse iPhone with ADE into Nurses", d: "All five clinic iPhones should be supervised through Automated Device Enrollment. One of them wasn't bought through the clinic's Apple business account.", ok: !!nurses && NURSE_IPHONES.every((id) => { const d = devById(id); return d.status === "enrolled" && d.method === "ade" && d.group === nurses.id; }) },
+      { t: "Enroll the three home health Androids as fully managed into Home Health", d: "Company Android phones get full management. Fully managed setup only works on a phone at its first Welcome screen.", ok: !!hh && HH_PHONES.every((id) => { const d = devById(id); return d.status === "enrolled" && d.method === "fullyManaged" && d.group === hh.id; }) },
+      { t: "Enroll the personal phones the right way, into BYOD Staff", d: "Kayla (Android) and Devon (iPhone) are using their own phones. Pick the method that keeps work and personal separate.", ok: !!by && k.method === "workProfile" && k.group === by.id && (k.status === "enrolled" || k.status === "retired") && dv.method === "userEnroll" && dv.group === by.id && dv.status === "enrolled" },
+      { t: "Require a passcode of at least 6 digits and auto-lock of 5 minutes or less on every enrolled device", d: "Check the Baseline and any group overrides. Every enrolled device has to meet it.", ok: en.length > 0 && en.every((d) => idx("passcodeMin", dEff(d, "passcodeMin")) >= 2 && idx("autoLock", dEff(d, "autoLock")) >= 1) },
+      { t: "Require storage encryption on Android, in the profile and in compliance", d: "The profile tells the phone to encrypt. The compliance rule checks that it did.", ok: S.comp.requireEncryption === "On" && en.filter((d) => d.platform === "android").every((d) => dEff(d, "encryption") === "Required") },
+      { t: "Set minimum OS versions and bring the spare Android up to date", d: "Set a minimum for iOS and for Android in Compliance, then get the out-of-date spare phone compliant.", ok: S.comp.minIOS !== "None" && S.comp.minAndroid !== "None" && old.status === "enrolled" && old.os >= Number(S.comp.minAndroid) },
+      { t: "Block jailbroken and rooted devices from patient data", d: "Turn on the compromised-device rule and conditional access. Devon's phone should end up enrolled but blocked from ChartPro and SecureChat.", ok: S.comp.blockCompromised === "On" && S.comp.conditionalAccess === "On" && dv.status === "enrolled" && caBlocked(dv) },
+      { t: "Push ChartPro and SecureChat to Nurses and Home Health; SecureChat to BYOD Staff", d: "Make them Required so they install automatically.", ok: req(nurses, "chartpro") && req(nurses, "securechat") && req(hh, "chartpro") && req(hh, "securechat") && req(by, "securechat") },
+      { t: "Keep work data out of personal apps on BYOD phones", d: "On personal phones, patient information must not be pasted into personal apps.", ok: !!by && eff(by.id, "dataSharing").value.startsWith("Block") },
+      { t: "Lock the front desk iPads to Patient Check-In", d: "Single app mode needs the app installed first.", ok: !!front && eff(front.id, "singleApp").value !== "Off" && req(front, "checkin") },
+      { t: "Put Sam's lost iPhone in Lost Mode with a message and a phone number", d: "The message should say the phone belongs to Riverbend and give a number to call.", ok: sam.status === "enrolled" && sam.lost && /riverbend/i.test(sam.lostMsg + " " + sam.lostPhone) && hasPhone(sam.lostPhone + " " + sam.lostMsg) },
+      { t: "Kayla's last day: remove work data from her phone without erasing it", d: "It's her phone. Take back the clinic's data and leave her photos alone.", ok: k.status === "retired" },
+    ];
+  }
+
+  // ---------- Views ----------
+  const NAV = [["home", "Overview"], ["devices", "Devices"], ["enroll", "Enroll"], ["groups", "Groups"], ["profiles", "Profiles"], ["compliance", "Compliance"], ["apps", "Apps"], ["privacy", "What IT can see"], ["preview", "Device preview"], ["missions", "Checklist"], ["log", "Activity log"], ["report", "Report"]];
+  function renderNav() {
+    const ms = missions(), done = ms.filter((m) => m.ok).length;
+    const counts = { devices: enrolled().length, enroll: S.devices.filter((d) => d.status === "staged").length, missions: `${done}/${ms.length}` };
+    $("#nav").innerHTML = NAV.map(([v, l]) => `<button data-view="${v}" ${S.view === v ? 'aria-current="page"' : ""}><span>${l}</span>${counts[v] != null ? `<span class="count">${counts[v]}</span>` : ""}</button>`).join("");
+    $("#whoCtx").innerHTML = `Admin <b>${esc(S.student || "Student IT tech")}</b>`;
+    const nc = enrolled().filter((d) => !compliance(d).ok).length;
+    $("#lic").innerHTML = `Checklist ${done} of ${ms.length}<span class="meter"><i style="width:${Math.round((done / ms.length) * 100)}%"></i></span>${nc ? `<span class="pill bad">${nc} not compliant</span>` : '<span class="pill good">All compliant</span>'}`;
+  }
+  const chip = (d) => `<span class="chip ${d.platform === "ios" ? "apple" : "android"}">${platName(d)}</span>`;
+  const ownChip = (d) => `<span class="pill ${d.ownership === "company" ? "mute" : "warn"}">${d.ownership === "company" ? "Company" : "Personal"}</span>`;
+  function statusPill(d) {
+    if (d.status === "staged") return '<span class="pill mute">Waiting to enroll</span>';
+    if (d.status === "retired") return '<span class="pill mute">Work data removed</span>';
+    if (d.lost) return '<span class="pill bad">Lost Mode</span>';
+    const c = compliance(d);
+    return c.ok ? '<span class="pill good">Compliant</span>' : `<span class="pill bad" title="${esc(c.reasons.join("; "))}">Not compliant</span>`;
+  }
+
+  function vHome() {
+    const ms = missions(), done = ms.filter((m) => m.ok).length, en = enrolled();
+    return `<div><h1>Overview</h1><p class="sub">You are the clinic's IT support. Use this console to enroll phones and iPads, push settings and apps, enforce compliance and handle lost devices.</p></div>
+      <div class="ticket"><b>Ticket from Jordan Price, Clinic Manager</b>
+        <span>"We're getting audited next month and I need every phone that touches patient data under control. Five new nurse iPhones and three Android phones for the home health team are waiting. Two staff members want work apps on their own phones, and I don't want IT seeing their personal stuff. Maria's phone turned up, but now Sam has lost his iPhone after a home visit yesterday. And Kayla's last day is Friday. The full list is on the Checklist."</span></div>
+      <div class="tiles">
+        <div class="tile"><span class="n">${en.length}</span><span class="l">Enrolled</span></div>
+        <div class="tile"><span class="n">${S.devices.filter((d) => d.status === "staged").length}</span><span class="l">Waiting to enroll</span></div>
+        <div class="tile"><span class="n">${en.filter((d) => !compliance(d).ok).length}</span><span class="l">Not compliant</span></div>
+        <div class="tile"><span class="n">${S.devices.filter((d) => d.lost).length}</span><span class="l">In Lost Mode</span></div>
+        <div class="tile"><span class="n">${done}/${ms.length}</span><span class="l">Checklist done</span></div>
+      </div>
+      <div class="panel"><h2>How this console is organized</h2>
+        <p class="hint"><b>Groups</b> sort devices by who uses them. <b>Profiles</b> hold settings: the Baseline applies to every device, and a group can override a setting. <b>Compliance</b> rules check whether a device is safe; with conditional access on, an unsafe device can't open patient apps. <b>Apps</b> can be Required (installed automatically), Available (in the company app catalog) or Blocked. Click any device on the Devices page for remote actions like Lock, Lost Mode and Wipe.</p></div>
+      <div class="panel"><h2>Recent activity</h2>${logHTML(6)}</div>`;
+  }
+
+  function vDevices() {
+    const list = S.devices.filter((d) => d.status !== "staged" && (S.fgrp === "all" || (S.fgrp === "none" ? !d.group : d.group === S.fgrp)));
+    const opts = `<option value="all">All groups</option>${S.groups.map((g) => `<option value="${g.id}">${esc(g.name)}</option>`).join("")}<option value="none">No group</option>`;
+    return `<div><h1>Devices</h1><p class="sub">Enrolled and retired devices. Devices still in setup are on the Enroll page. Choose <b>Manage</b> to see details, change the group or send a remote action.</p></div>
+      <div class="row"><label for="fgrp">Group</label><select id="fgrp">${opts}</select></div>
+      <div class="tablewrap"><table><thead><tr><th>Device</th><th>User</th><th>Platform</th><th>Owner</th><th>Enrolled with</th><th>Group</th><th>Status</th><th></th></tr></thead><tbody>
+      ${list.map((d) => `<tr><td><b>${esc(d.name)}</b><br><span class="mono hint">${d.id}</span></td><td>${esc(d.user)}</td><td>${chip(d)}<br><span class="hint">${osText(d)}</span></td><td>${ownChip(d)}</td><td>${d.method ? METHODS[d.method].short : "-"}</td><td>${esc(grpName(d.group))}</td><td>${statusPill(d)}</td><td><button class="btn small" data-dev="${d.id}">Manage</button></td></tr>`).join("") || '<tr><td colspan="8" class="hint">No devices match.</td></tr>'}
+      </tbody></table></div>`;
+  }
+
+  function vEnroll() {
+    const staged = S.devices.filter((d) => d.status === "staged");
+    if (!staged.length) return `<div><h1>Enroll</h1><p class="sub">Every device is enrolled. Nice work.</p></div>`;
+    if (!staged.find((d) => d.id === S.enSel)) S.enSel = staged[0].id;
+    const d = devById(S.enSel);
+    const methods = Object.entries(METHODS).filter(([, m]) => m.plat === d.platform);
+    return `<div><h1>Enroll a device</h1><p class="sub">Pick a device, choose how to enroll it, and choose its group. The right method depends on two things: the platform, and <b>who owns the device</b>.</p></div>
+      <div class="grid2">
+        <div class="panel"><h2>Waiting to enroll</h2><div class="tree">${staged.map((x) => `<button data-ensel="${x.id}" aria-selected="${x.id === d.id}">${chip(x)} ${esc(x.name)}</button>`).join("")}</div></div>
+        <div class="panel stepper">
+          <h2>${esc(d.name)} <span class="mono hint">${d.id}</span></h2>
+          <dl class="kv"><dt>User</dt><dd>${esc(d.user)}</dd><dt>Platform</dt><dd>${chip(d)} ${osText(d)}${d.form === "tablet" ? " (tablet)" : ""}</dd><dt>Owner</dt><dd>${ownChip(d)}</dd>
+          ${d.platform === "ios" && d.ownership === "company" ? `<dt>Apple Business Manager</dt><dd>${d.inABM ? '<span class="pill good">Listed</span>' : '<span class="pill warn">Not listed</span>'}</dd>` : ""}
+          <dt>Setup state</dt><dd>${d.setUp ? "Already set up by someone" : "At the first Welcome screen"}</dd><dt>Notes</dt><dd>${esc(d.note) || "-"}</dd></dl>
+          <label for="enMethod">Enrollment method</label><select id="enMethod">${methods.map(([k, m]) => `<option value="${k}">${m.label}</option>`).join("")}</select>
+          <label for="enGroup">Group</label><select id="enGroup"><option value="">Choose a group</option>${S.groups.map((g) => `<option value="${g.id}">${esc(g.name)}</option>`).join("")}</select>
+          <div id="enOut"></div>
+          <div class="row" style="justify-content:flex-end"><button class="btn primary" id="enGo">Enroll</button></div>
+        </div>
+      </div>`;
+  }
+
+  function vGroups() {
+    return `<div><h1>Groups</h1><p class="sub">Groups sort devices by role, so each role gets the right settings and apps. A device belongs to one group. Change a device's group from Devices > Manage, or pick the group when you enroll it.</p></div>
+      <div class="panel"><div class="row"><label for="newGrp">New group</label><input type="text" id="newGrp" placeholder="e.g. Home Health"><button class="btn primary" id="addGrp">Create group</button></div></div>
+      <div class="tablewrap"><table><thead><tr><th>Group</th><th>Devices</th><th>Settings overrides</th><th>App assignments</th><th></th></tr></thead><tbody>
+      ${S.groups.map((g) => { const n = S.devices.filter((d) => d.group === g.id && d.status === "enrolled").length; return `<tr><td><b>${esc(g.name)}</b></td><td>${n}</td><td>${Object.keys(S.prof[g.id] || {}).length}</td><td>${Object.keys(S.apps[g.id] || {}).length}</td><td>${n ? "" : `<button class="btn small danger" data-delgrp="${g.id}">Delete</button>`}</td></tr>`; }).join("")}
+      </tbody></table></div>`;
+  }
+
+  const scopeTabs = () => `<div class="tabs" role="tablist">${["baseline", ...S.groups.map((g) => g.id)].map((s) => `<button role="tab" data-scope="${s}" aria-selected="${S.scope === s}">${esc(scopeName(s))}</button>`).join("")}</div>`;
+  const platLabel = (s) => (s.plat === "android" ? '<span class="chip android">Android</span>' : s.plat === "ios" ? '<span class="chip apple">iPad</span>' : '<span class="chip">iOS + Android</span>') + (s.company ? ' <span class="pill mute">Company only</span>' : "");
+  function vProfiles() {
+    if (S.scope !== "baseline" && !grpById(S.scope)) S.scope = "baseline";
+    const isBase = S.scope === "baseline";
+    return `<div><h1>Configuration profiles</h1><p class="sub">The <b>Baseline</b> applies to every enrolled device. A group can override any setting; everything it doesn't override comes from the Baseline. Settings marked <b>Company only</b> are skipped on personal phones, because IT doesn't control an employee's whole phone.</p></div>
+      ${scopeTabs()}
+      <div class="panel">${SETTINGS.map((s) => { const e = eff(isBase ? null : S.scope, s.key); const local = isBase ? s.key in S.prof.baseline : e.from === S.scope;
+        return `<div class="policy"><div><b>${s.label}</b> ${platLabel(s)}<p class="help">${s.help}</p><span class="src ${local ? "local" : ""}">${local ? "Set here" : e.from === "baseline" ? "Inherited from Baseline" : "Default"}</span>${!isBase && local ? ` <button class="btn small" data-inherit="${s.key}">Use Baseline</button>` : ""}</div>
+          <select id="set-${s.key}" data-set="${s.key}" aria-label="${s.label}">${s.options.map((o) => `<option ${o === e.value ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></div>`; }).join("")}</div>`;
+  }
+
+  function vCompliance() {
+    const c = S.comp;
+    const ctl = (key, label, opts, help) => `<div class="policy"><div><b>${label}</b><p class="help">${help}</p></div><select id="comp-${key}" data-comp="${key}" aria-label="${label}">${opts.map((o) => `<option ${o === c[key] ? "selected" : ""}>${o}</option>`).join("")}</select></div>`;
+    return `<div><h1>Compliance</h1><p class="sub">Profiles tell a device what to do. Compliance rules <b>check</b> that it's safe. With conditional access on, a device that fails any rule can't open ChartPro or SecureChat until it's fixed.</p></div>
+      <div class="panel">
+        ${ctl("minIOS", "Minimum iOS / iPadOS version", ["None", "17", "18"], "Older versions miss security fixes.")}
+        ${ctl("minAndroid", "Minimum Android version", ["None", "13", "14"], "Company phones can be updated remotely from Devices > Manage.")}
+        ${ctl("blockCompromised", "Mark jailbroken or rooted devices not compliant", ["Off", "On"], "Jailbreaking or rooting removes the phone's built-in protections.")}
+        ${ctl("requirePasscode", "Require a passcode", ["Off", "On"], "Fails any device whose profile doesn't require a passcode.")}
+        ${ctl("requireEncryption", "Require encryption (Android)", ["Off", "On"], "Fails Android devices whose profile doesn't require storage encryption.")}
+        ${ctl("conditionalAccess", "Conditional access: block patient apps on devices that aren't compliant", ["Off", "On"], "This is what gives the rules teeth.")}
+      </div>
+      <div class="tablewrap"><table><thead><tr><th>Device</th><th>Group</th><th>Status</th><th>Why</th><th>Patient apps</th></tr></thead><tbody>
+      ${enrolled().map((d) => { const r = compliance(d); return `<tr><td>${chip(d)} ${esc(d.name)}</td><td>${esc(grpName(d.group))}</td><td>${r.ok ? '<span class="pill good">Compliant</span>' : '<span class="pill bad">Not compliant</span>'}</td><td class="hint">${esc(r.reasons.join("; ")) || "-"}</td><td>${caBlocked(d) ? '<span class="pill bad">Blocked</span>' : '<span class="pill good">Allowed</span>'}</td></tr>`; }).join("")}
+      </tbody></table></div>`;
+  }
+
+  function vApps() {
+    if (S.scope !== "baseline" && !grpById(S.scope)) S.scope = "baseline";
+    const gid = S.scope === "baseline" ? null : S.scope;
+    return `<div><h1>Apps</h1><p class="sub"><b>Required</b> installs automatically. <b>Available</b> shows up in the company app catalog for people to install. <b>Blocked</b> removes it from company devices; on personal phones it only keeps the app out of the work space.</p></div>
+      ${scopeTabs()}
+      <div class="tablewrap"><table><thead><tr><th>App</th><th>What it is</th><th>Assignment</th><th>From</th></tr></thead><tbody>
+      ${APPS.map((a) => { const e = gid ? appEff(gid, a.id) : { value: S.apps.baseline[a.id] || "Not set", from: S.apps.baseline[a.id] ? "baseline" : null };
+        const local = gid ? e.from === gid : !!S.apps.baseline[a.id];
+        return `<tr><td><b>${a.name}</b></td><td class="hint">${a.note}</td><td><select id="app-${a.id}" data-app="${a.id}" aria-label="${a.name}">${["Not set", "Required", "Available", "Blocked"].map((o) => `<option ${o === (local ? e.value : "Not set") ? "selected" : ""}>${o}</option>`).join("")}</select></td><td class="hint">${local ? "Set here" : e.from === "baseline" ? `Baseline: ${e.value}` : "-"}</td></tr>`; }).join("")}
+      </tbody></table></div>`;
+  }
+
+  function vPrivacy() {
+    const rows = [
+      ["Device model, serial number and OS version", true, true],
+      ["Compliance status (passcode set, encrypted, jailbroken or rooted)", true, true],
+      ["Work apps and the data inside them", true, true],
+      ["Full list of every app on the phone", true, false],
+      ["Location (only when Lost Mode or Locate is used)", true, false],
+      ["Phone number", true, false],
+      ["Personal photos, texts, email, browsing history", false, false],
+      ["Personal app data", false, false],
+      ["Erase the whole device", true, false],
+      ["Remove only work apps and data", true, true],
+    ];
+    const yn = (b) => (b ? '<span class="yes">Yes</span>' : '<span class="no">No</span>');
+    return `<div><h1>What IT can see</h1><p class="sub">People worry their employer can read their texts. With modern MDM, what IT can see depends on who owns the device and how it was enrolled. This is what to tell Kayla and Devon.</p></div>
+      <div class="tablewrap"><table class="seetable"><thead><tr><th>Information or action</th><th>Company device<br>(ADE or fully managed)</th><th>Personal device<br>(User Enrollment or work profile)</th></tr></thead><tbody>
+      ${rows.map(([l, a, b]) => `<tr><td>${l}</td><td>${yn(a)}</td><td>${yn(b)}</td></tr>`).join("")}
+      </tbody></table></div>
+      <div class="panel"><h2>Why it works this way</h2><p class="hint">On a personal phone, User Enrollment (iPhone) and a work profile (Android) create a separate, encrypted space for work apps. IT manages only that space. When the person leaves, IT removes the work space and everything personal stays. On a clinic-owned phone, IT manages the whole device, because all of it belongs to the clinic. Exact details vary by MDM product and OS version.</p></div>`;
+  }
+
+  function phoneHTML(d) {
+    const tablet = d.form === "tablet", cls = `phone ${d.platform === "android" ? "android" : ""} ${tablet ? "tablet" : ""}`;
+    if (d.status === "staged") {
+      const body = d.setUp ? `<b>Set up by ${esc(d.user.split(",")[0])}</b><span style="font-size:11px">Personal account signed in. Not managed by Riverbend.</span>` : `<b style="font-size:20px">${d.platform === "ios" ? "Hello" : "Welcome"}</b><span style="font-size:11px">${d.platform === "ios" && d.inABM ? "Remote Management: this device will be configured by Riverbend Family Clinic." : "Waiting for setup."}</span>`;
+      return `<div class="${cls}"><div class="scr setup">${body}</div></div>`;
+    }
+    if (d.lost && d.status === "enrolled") return `<div class="${cls}"><div class="scr lost"><b>${d.platform === "ios" ? "Lost iPhone" : "Locked by your organization"}</b><span>${esc(d.lostMsg)}</span><b>${esc(d.lostPhone)}</b>${d.platform === "ios" ? '<span style="font-size:11px">Call</span>' : ""}</div></div>`;
+    if (d.status === "enrolled" && applies(d, setting("singleApp")) && dEff(d, "singleApp") !== "Off") {
+      return appEff(d.group, "checkin").value === "Required"
+        ? `<div class="${cls}"><div class="scr single"><b style="font-size:18px">Patient Check-In</b><span>Welcome to Riverbend Family Clinic</span><span style="background:#0e7c7b;color:#fff;border-radius:8px;padding:6px 12px">Tap to check in</span><span style="font-size:10px;color:#5b6b70">Single app mode: Home button disabled</span></div></div>`
+        : `<div class="${cls}"><div class="scr single"><b>Single app mode is on</b><span>But Patient Check-In isn't installed. Make it Required for this group.</span></div></div>`;
+    }
+    const personal = d.ownership === "personal", live = d.status === "enrolled";
+    const stock = d.platform === "ios" ? ["Phone", "Messages", "Camera", "Photos", "Safari", "Settings"] : ["Phone", "Messages", "Camera", "Photos", "Chrome", "Settings"];
+    const icons = [], notes = [];
+    stock.forEach((n) => { const blocked = live && n === "Camera" && applies(d, setting("camera")) && dEff(d, "camera") === "Block"; if (tablet && n === "Phone") return; icons.push(`<span class="app ${blocked ? "blocked" : ""}"><i>${n.slice(0, 2)}</i>${n}</span>`); if (blocked) notes.push("Camera disabled by IT"); });
+    const clip = live ? appEff(d.group, "clipster").value : "Not set";
+    if (personal || (clip !== "Blocked" && dEff(d, "appInstalls") === "Any app")) icons.push(`<span class="app"><i>CL</i>Clipster</span>`);
+    if (!personal && live && clip === "Blocked") notes.push("Clipster removed by IT");
+    if (personal && live && clip === "Blocked") notes.push("Clipster blocked in the work space only; it's still in her or his personal apps");
+    let avail = 0;
+    if (live) APPS.filter((a) => a.id !== "clipster").forEach((a) => { const v = appEff(d.group, a.id).value; if (v === "Available") avail++; if (v !== "Required") return; const bl = caBlocked(d) && (a.id === "chartpro" || a.id === "securechat"); icons.push(`<span class="app ${bl ? "blocked" : ""}"><i>${a.ab}${personal || d.platform === "android" ? `<b>${personal ? "W" : "M"}</b>` : ""}</i>${a.name.split(" ")[0]}</span>`); });
+    if (live) {
+      const c = compliance(d);
+      if (caBlocked(d)) notes.push(`ChartPro and SecureChat won't open: ${c.reasons.join("; ")}`);
+      const pc = dEff(d, "passcodeMin"); if (idx("passcodeMin", pc) > 0) notes.push(`Passcode: ${pc}; auto-lock ${dEff(d, "autoLock").toLowerCase()}`);
+      if (dEff(d, "wifi") !== "None") notes.push("Wi-Fi: Riverbend-Staff");
+      if (dEff(d, "vpn") !== "Off") notes.push("VPN: connected");
+      if (dEff(d, "dataSharing").startsWith("Block")) notes.push("Paste from work apps to personal apps: blocked");
+      if (avail) notes.push(`${avail} app${avail > 1 ? "s" : ""} available in the company catalog`);
+      if (personal) notes.push(d.platform === "android" ? "Work apps are in the Work tab (W badge)" : "Work apps live in a separate managed space");
+    } else if (d.status === "retired") notes.push("Work space removed. Personal apps, photos and texts are untouched.");
+    return `<div class="${cls}"><div class="scr"><div class="clock">9:41</div><div class="icons">${icons.join("")}</div><div class="note">${notes.map((n) => `<span>${esc(n)}</span>`).join("") || "<span>No management messages</span>"}</div></div></div>`;
+  }
+  function vPreview() {
+    const d = devById(S.previewId) || S.devices[0];
+    const opts = S.devices.map((x) => `<option value="${x.id}" ${x.id === d.id ? "selected" : ""}>${esc(x.name)} (${x.id})</option>`).join("");
+    const facts = d.status === "enrolled" ? SETTINGS.filter((s) => applies(d, s)).map((s) => { const e = eff(d.group, s.key); return `<tr><td>${s.label}</td><td>${esc(e.value)}</td><td class="hint">${e.from ? esc(scopeName(e.from)) : "Default"}</td></tr>`; }).join("") : "";
+    return `<div><h1>Device preview</h1><p class="sub">See what the person holding a device would see, based on its group, profile, apps and compliance. Use this to check your work.</p></div>
+      <div class="row"><label for="pvSel">Device</label><select id="pvSel">${opts}</select>${statusPill(d)}</div>
+      <div class="grid2" style="grid-template-columns:minmax(0,auto) minmax(0,1fr)"><div class="phones">${phoneHTML(d)}</div>
+      <div class="panel"><h2>Settings in effect</h2>${facts ? `<div class="tablewrap"><table><thead><tr><th>Setting</th><th>Value</th><th>From</th></tr></thead><tbody>${facts}</tbody></table></div><p class="hint">Settings that don't apply to this device (platform or ownership) are left out.</p>` : '<p class="hint">Only enrolled devices have settings in effect.</p>'}</div></div>`;
+  }
+
+  function vMissions() {
+    const ms = missions();
+    return `<div><h1>Clinic manager's checklist</h1><p class="sub">Each item checks itself as soon as your console meets it. Do them in any order.</p></div>
+      <div class="panel">${ms.map((m, i) => `<div class="mission"><span class="check ${m.ok ? "done" : "todo"}" aria-label="${m.ok ? "Done" : "Not done"}">${m.ok ? "✓" : i + 1}</span><div><b>${m.t}</b><p class="hint">${m.d}</p></div></div>`).join("")}</div>`;
+  }
+  function logHTML(n) { return `<div class="log">${S.log.slice(0, n).map((l) => `<div><time>${l.t}</time><span>${esc(l.m)}</span></div>`).join("")}</div>`; }
+  function vLog() { return `<div><h1>Activity log</h1><p class="sub">Every change, newest first. Real MDM consoles keep an audit log like this, which matters in healthcare audits.</p></div><div class="panel">${logHTML(300)}</div>`; }
+
+  function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).toUpperCase().padStart(7, "0"); }
+  function reportText() {
+    const ms = missions();
+    const scopes = ["baseline", ...S.groups.map((g) => g.id)];
+    const body = [
+      "MDM Simulator report (Riverbend Family Clinic)",
+      `Admin: ${S.student || "(name not entered)"}`,
+      `Generated: ${new Date().toLocaleString()}`,
+      `Checklist: ${ms.filter((m) => m.ok).length} of ${ms.length} complete`,
+      ...ms.map((m) => `  [${m.ok ? "x" : " "}] ${m.t}`),
+      "", "Devices:",
+      ...S.devices.map((d) => { const c = compliance(d); return `  ${d.id} ${d.name} | ${osText(d)} | ${d.ownership} | ${d.method ? METHODS[d.method].short : "-"} | ${grpName(d.group)} | ${d.status === "enrolled" ? (d.lost ? "Lost Mode" : c.ok ? "compliant" : "NOT compliant: " + c.reasons.join("; ")) : d.status}`; }),
+      ...S.devices.filter((d) => d.lost).map((d) => `  Lost Mode on ${d.id}: "${d.lostMsg}" ${d.lostPhone}`),
+      "", "Profiles:",
+      ...scopes.map((s) => `  ${scopeName(s)}: ${Object.entries(S.prof[s] || {}).map(([k, v]) => `${setting(k).label}=${v}`).join("; ") || "(no settings)"}`),
+      "", `Compliance: min iOS ${S.comp.minIOS}; min Android ${S.comp.minAndroid}; block jailbroken/rooted ${S.comp.blockCompromised}; require passcode ${S.comp.requirePasscode}; require encryption ${S.comp.requireEncryption}; conditional access ${S.comp.conditionalAccess}`,
+      "", "Apps:",
+      ...scopes.map((s) => `  ${scopeName(s)}: ${Object.entries(S.apps[s] || {}).map(([k, v]) => `${APPS.find((a) => a.id === k).name}=${v}`).join("; ") || "(none)"}`),
+      "", `Changes logged: ${S.log.length}`,
+    ].join("\n");
+    return body + `\nVerification code: ${hash((S.student || "") + "|" + body.replace(/Generated: .*\n/, ""))}`;
+  }
+  function vReport() {
+    return `<div><h1>Report</h1><p class="sub">Enter your name, then copy this report into your Solve It submission. The verification code changes whenever your configuration or name changes, so your instructor can match the report to your recording.</p></div>
+      <div class="panel"><div class="row"><label for="stuName">Your name</label><input type="text" id="stuName" value="${esc(S.student)}" placeholder="First and last name"><button class="btn primary" id="saveName">Save name</button></div></div>
+      <div class="panel"><div class="row" style="justify-content:space-between"><h2>Configuration report</h2><button class="btn" id="copyRep">Copy report</button></div>
+      <div class="tablewrap" style="border:none"><pre class="mono" id="repText" style="margin:0;white-space:pre-wrap;font-size:13px">${esc(reportText())}</pre></div></div>`;
+  }
+
+  function render() {
+    renderNav();
+    const v = { home: vHome, devices: vDevices, enroll: vEnroll, groups: vGroups, profiles: vProfiles, compliance: vCompliance, apps: vApps, privacy: vPrivacy, preview: vPreview, missions: vMissions, log: vLog, report: vReport }[S.view] || vHome;
+    $("#work").innerHTML = v();
+    if (S.view === "devices") $("#fgrp").value = S.fgrp;
+    save();
+  }
+
+  // ---------- Dialogs ----------
+  function dialog(html) {
+    $("#layer").innerHTML = `<div class="overlay"><div class="dialog" role="dialog" aria-modal="true">${html}</div></div>`;
+    const first = $("#layer .dialog").querySelector("select, input, textarea, button"); if (first) first.focus();
+  }
+  const closeDialog = () => { $("#layer").innerHTML = ""; };
+  let ddId = null;
+  function deviceDialog(id, out) {
+    ddId = id; const d = devById(id), c = compliance(d), co = d.ownership === "company", live = d.status === "enrolled";
+    const act = (a, label, cls = "") => `<button class="btn ${cls}" data-act="${a}" ${live ? "" : "disabled"}>${label}</button>`;
+    dialog(`<h2>${esc(d.name)} <span class="mono hint">${d.id}</span></h2>
+      <dl class="kv"><dt>User</dt><dd>${esc(d.user)}</dd><dt>Platform</dt><dd>${chip(d)} ${osText(d)}${d.os < d.latest ? ` <span class="hint">(update to ${d.latest} available)</span>` : ""}</dd><dt>Owner</dt><dd>${ownChip(d)}</dd>
+      <dt>Enrolled with</dt><dd>${d.method ? METHODS[d.method].short : "-"}</dd><dt>Status</dt><dd>${statusPill(d)}${c && !c.ok ? `<br><span class="hint">${esc(c.reasons.join("; "))}</span>` : ""}</dd><dt>Notes</dt><dd>${esc(d.note) || "-"}</dd></dl>
+      ${live ? `<div class="row"><label for="ddGroup">Group</label><select id="ddGroup"><option value="">No group</option>${S.groups.map((g) => `<option value="${g.id}" ${g.id === d.group ? "selected" : ""}>${esc(g.name)}</option>`).join("")}</select><button class="btn small" id="ddMove">Change group</button></div>` : ""}
+      <h2>Remote actions</h2>
+      <div class="row">${act("locate", "Locate")}${act("lock", co ? "Lock" : "Lock work space")}${act("lost", d.lost ? "End Lost Mode" : d.platform === "ios" ? "Lost Mode" : "Lock with message")}${act("update", "Push OS update")}${act("retire", "Remove work data")}${act("wipe", "Wipe device", "danger")}</div>
+      <p class="hint">${co ? "Company device: IT manages the whole device." : "Personal device: IT manages only the work space."}</p>
+      <div id="ddOut">${out || ""}</div>
+      <div class="row" style="justify-content:flex-end"><button class="btn" id="ddClose">Close</button></div>`);
+  }
+  const ddOut = (html) => { const o = $("#ddOut"); if (o) o.innerHTML = html; };
+  function resetDialog() {
+    dialog(`<h2>Reset the simulator?</h2><p>This erases your groups, settings and log and starts over. Your report and checklist progress will be lost.</p>
+      <div class="row" style="justify-content:flex-end"><button class="btn" id="rsCancel">Keep my work</button><button class="btn danger" id="rsGo">Reset</button></div>`);
+  }
+
+  function runAction(a) {
+    const d = devById(ddId), co = d.ownership === "company";
+    const no = (m) => { ddOut(`<div class="notice bad">${m}</div>`); log(`${a} on ${d.id} refused: ${m.replace(/<[^>]+>/g, "")}`); save(); };
+    switch (a) {
+      case "locate":
+        if (!co) return no("<b>Not available.</b> IT can't see the location of an employee's personal phone.");
+        log(`Located ${d.id}.`); save();
+        return ddOut(`<div class="notice info"><b>Location:</b> ${d.id === LOST ? "Last seen near the Hwy 42 rest area, about 2 hours ago." : "Riverbend Family Clinic, 2 minutes ago."} <span class="hint">Location lookups are logged; use them only for lost or stolen devices.</span></div>`);
+      case "lock":
+        log(`Sent Lock to ${d.id}${co ? "" : " (work space only)"}.`); save();
+        return ddOut(`<div class="notice good">${co ? "Device locked. The passcode is needed to unlock it." : "Work space locked. Personal apps keep working."}</div>`);
+      case "lost":
+        if (!co) return no("<b>Not available.</b> Lost Mode is for company devices. Ask the employee to use their own Find My or Find Hub service.");
+        if (d.lost) { d.lost = false; d.lostMsg = ""; d.lostPhone = ""; log(`Ended Lost Mode on ${d.id}.`); render(); return deviceDialog(d.id, '<div class="notice good">Lost Mode ended.</div>'); }
+        return ddOut(`<div class="stepper"><label for="lmMsg">Message on the lock screen</label><textarea id="lmMsg" rows="2" placeholder="This iPhone belongs to Riverbend Family Clinic. Please call us."></textarea>
+          <label for="lmPhone">Phone number to show</label><input type="text" id="lmPhone" placeholder="555-0187"><div class="row" style="justify-content:flex-end"><button class="btn primary" id="lmGo">${d.platform === "ios" ? "Turn on Lost Mode" : "Lock with message"}</button></div></div>`);
+      case "update":
+        if (!co) return no("<b>Not available.</b> IT can't force OS updates on a personal phone. Compliance rules can block work apps until the owner updates.");
+        if (d.os >= d.latest) return ddOut(`<div class="notice info">${osText(d)} is already the latest version for this device.</div>`);
+        log(`Pushed OS update to ${d.id}: ${osText(d)} → ${d.latest}.`); d.os = d.latest; render();
+        return deviceDialog(d.id, `<div class="notice good">Update installed. ${osText(d)}.</div>`);
+      case "retire":
+        if (co) return no("<b>Use the right tool.</b> Remove work data is for personal phones. For a company device that's leaving service, wipe it.");
+        return ddOut(`<div class="notice info">Remove the work space from ${esc(d.name)}? Work apps and their data are deleted. Personal photos, texts and apps are not touched.</div><div class="row" style="justify-content:flex-end"><button class="btn danger" id="retireGo">Remove work data</button></div>`);
+      case "wipe":
+        if (!co) return no("<b>Blocked.</b> This is an employee's personal phone. Erasing it would destroy their photos and personal data. Use <b>Remove work data</b> instead.");
+        return ddOut(`<div class="notice bad">${d.id === LOST ? "<b>Wait.</b> Wiping a lost phone erases it, and you lose the ability to show a message or locate it. Try Lost Mode first. " : ""}Erase everything on ${esc(d.name)} and return it to setup?</div><div class="row" style="justify-content:flex-end"><button class="btn danger" id="wipeGo">Erase device</button></div>`);
+    }
+  }
+
+  function tryEnroll() {
+    const d = devById(S.enSel), m = $("#enMethod").value, g = $("#enGroup").value, out = $("#enOut");
+    const fail = (msg, fix) => { out.innerHTML = `<div class="notice bad"><b>Enrollment failed.</b> ${msg}</div>${fix || ""}`; log(`Enrollment of ${d.id} with ${METHODS[m].short} failed: ${msg}`); save(); };
+    if (!g) { out.innerHTML = '<div class="notice bad">Choose a group first.</div>'; return; }
+    if (m === "ade") {
+      if (d.ownership !== "company") return fail("Automated Device Enrollment only works for devices the organization owns and bought through Apple Business Manager. This is an employee's personal iPhone.");
+      if (!d.inABM) return fail("This iPhone isn't listed in the clinic's Apple Business Manager account because it was bought at a store. A company-owned device can be added with Apple Configurator, which erases it.", '<button class="btn small" id="fixABM">Add it with Apple Configurator (erases the phone)</button>');
+    }
+    if (m === "userEnroll" && d.ownership === "company") return fail("This iPhone belongs to the clinic. Use Automated Device Enrollment so it's supervised and IT can locate it, use Lost Mode and wipe it. User Enrollment only manages a separate work space.");
+    if (m === "fullyManaged") {
+      if (d.ownership !== "company") return fail("Fully managed gives IT control of the whole phone, including wiping it and seeing its location. That isn't acceptable on an employee's personal phone. Use a work profile.");
+      if (d.setUp) return fail("Fully managed setup can only start at the first Welcome screen of a factory-new phone. Someone already set this one up.", '<button class="btn small" id="fixReset">Factory reset the phone</button>');
+    }
+    if (m === "workProfile" && d.ownership === "company") return fail("This phone belongs to the clinic. Make it fully managed so IT can locate, update and wipe the whole phone. A work profile only manages part of it.");
+    if (m === "ade" && d.setUp) d.setUp = false;
+    d.status = "enrolled"; d.method = m; d.group = g;
+    log(`Enrolled ${d.id} (${d.name}) with ${METHODS[m].short} into ${grpName(g)}.`);
+    render(); toast(`${d.name} enrolled into ${grpName(g)}.`);
+  }
+
+  // ---------- Events ----------
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button"); if (!t || t.disabled) return;
+    if (t.dataset.view) { S.view = t.dataset.view; render(); return; }
+    if (t.dataset.scope) { S.scope = t.dataset.scope; render(); return; }
+    if (t.dataset.ensel) { S.enSel = t.dataset.ensel; render(); return; }
+    if (t.dataset.dev) { deviceDialog(t.dataset.dev); return; }
+    if (t.dataset.act) { runAction(t.dataset.act); return; }
+    if (t.dataset.inherit) { delete S.prof[S.scope][t.dataset.inherit]; log(`${scopeName(S.scope)}: "${setting(t.dataset.inherit).label}" now uses the Baseline.`); render(); return; }
+    if (t.dataset.delgrp) { const g = grpById(t.dataset.delgrp); S.groups = S.groups.filter((x) => x.id !== g.id); delete S.prof[g.id]; delete S.apps[g.id]; S.devices.forEach((d) => { if (d.group === g.id) d.group = null; }); log(`Deleted group "${g.name}".`); render(); return; }
+    switch (t.id) {
+      case "resetBtn": resetDialog(); break;
+      case "rsCancel": closeDialog(); break;
+      case "rsGo": S = seed(); closeDialog(); render(); toast("Simulator reset."); break;
+      case "addGrp": {
+        const name = $("#newGrp").value.trim(); if (!name) { toast("Type a name for the new group."); return; }
+        if (findGroup(name)) { toast(`A group named "${name}" already exists.`); return; }
+        const id = "g-" + Date.now().toString(36) + S.groups.length; S.groups.push({ id, name }); log(`Created group "${name}".`); render(); toast(`Created ${name}.`); break; }
+      case "enGo": tryEnroll(); break;
+      case "fixABM": { const d = devById(S.enSel); d.inABM = true; d.setUp = false; log(`${d.id} added to Apple Business Manager with Apple Configurator. The phone was erased.`); render(); $("#enOut").innerHTML = '<div class="notice info">Added to Apple Business Manager and erased. Try Automated Device Enrollment again.</div>'; break; }
+      case "fixReset": { const d = devById(S.enSel); d.setUp = false; log(`${d.id} factory reset; back at the Welcome screen.`); render(); $("#enOut").innerHTML = '<div class="notice info">Factory reset. Try fully managed enrollment again.</div>'; break; }
+      case "ddClose": closeDialog(); render(); break;
+      case "ddMove": { const d = devById(ddId), g = $("#ddGroup").value || null; if (g === d.group) return; log(`Moved ${d.id} from ${grpName(d.group)} to ${grpName(g)}.`); d.group = g; render(); deviceDialog(d.id, `<div class="notice good">Moved to ${esc(grpName(g))}.</div>`); break; }
+      case "lmGo": { const d = devById(ddId), m = $("#lmMsg").value.trim(), p = $("#lmPhone").value.trim(); if (!m) { toast("Write a message for the lock screen."); return; } d.lost = true; d.lostMsg = m; d.lostPhone = p; log(`Lost Mode on ${d.id}: "${m}" ${p}`); render(); deviceDialog(d.id, `<div class="notice good">${d.platform === "ios" ? "Lost Mode is on. The phone is locked and shows your message." : "Locked with your message."}</div>`); break; }
+      case "retireGo": { const d = devById(ddId); d.status = "retired"; d.lost = false; log(`Removed work data from ${d.id} (${d.name}). Personal data untouched.`); render(); deviceDialog(d.id, '<div class="notice good">Work space removed. The phone is no longer managed.</div>'); break; }
+      case "wipeGo": { const d = devById(ddId); log(`Wiped ${d.id} (${d.name}). It is back at setup.`); Object.assign(d, { status: "staged", method: null, group: null, lost: false, lostMsg: "", lostPhone: "", setUp: false }); closeDialog(); render(); toast(`${d.name} erased. Enroll it again from the Enroll page.`); break; }
+      case "saveName": S.student = $("#stuName").value.trim(); log(`Admin name set to "${S.student}".`); render(); toast("Name saved."); break;
+      case "copyRep": { const txt = $("#repText").textContent; const fallback = () => { const r = document.createRange(); r.selectNodeContents($("#repText")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast("Report selected. Press Ctrl + C (or Cmd + C) to copy."); };
+        try { navigator.clipboard.writeText(txt).then(() => toast("Report copied."), fallback); } catch (err) { fallback(); } break; }
+    }
+  });
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.dataset.set) {
+      const s = setting(t.dataset.set); S.prof[S.scope] = S.prof[S.scope] || {};
+      S.prof[S.scope][s.key] = t.value; log(`${scopeName(S.scope)}: set "${s.label}" to "${t.value}".`); render();
+      toast(S.scope === "baseline" ? "Saved. Every group uses this unless it overrides it." : "Saved as an override for this group.");
+    } else if (t.dataset.app) {
+      const a = APPS.find((x) => x.id === t.dataset.app); S.apps[S.scope] = S.apps[S.scope] || {};
+      if (t.value === "Not set") delete S.apps[S.scope][a.id]; else S.apps[S.scope][a.id] = t.value;
+      log(`${scopeName(S.scope)}: ${a.name} set to ${t.value}.`); render();
+    } else if (t.dataset.comp) {
+      S.comp[t.dataset.comp] = t.value; log(`Compliance: "${t.closest(".policy").querySelector("b").textContent}" set to ${t.value}.`); render();
+    } else if (t.id === "fgrp") { S.fgrp = t.value; render(); }
+    else if (t.id === "pvSel") { S.previewId = t.value; render(); }
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("#layer .overlay")) { closeDialog(); render(); } });
+
+  render();
+})();
+</script>
+
+</body>
+</html>

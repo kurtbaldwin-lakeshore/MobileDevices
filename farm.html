@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Farm Connectivity Planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a console shell. Left rail of sections, top context bar (org unit + licenses), work area on the right. Collapses to a top tab strip on phones. */
+:root {
+  --bg: #f3f6f6; --panel: #ffffff; --ink: #172327; --muted: #5b6b70; --line: #d6e1df;
+  --accent: #0e7c7b; --accent-ink: #ffffff; --accent-soft: #e2f1f0; --amber: #e8a33d; --amber-soft: #fbefdb;
+  --good: #2e7d4f; --good-soft: #e3f3e8; --warn: #9a6200; --warn-soft: #fff3d6; --bad: #b5482f; --bad-soft: #f9e3dd;
+  --rail: #12343b; --rail-ink: #e8f1f0; --rail-muted: #9fb7b5;
+  --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.45; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.mono { font-family: var(--font-mono); font-size: 0.9em; }
+.shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100%; }
+.rail { background: var(--rail); color: var(--rail-ink); padding-block: 18px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; display: flex; flex-direction: column; gap: 18px; }
+.brand { display: grid; gap: 2px; }
+.brand b { font-size: 17px; letter-spacing: 0.01em; }
+.brand span { color: var(--rail-muted); font-size: 12px; }
+.nav { display: grid; gap: 2px; }
+.nav button { all: unset; cursor: pointer; padding: 8px 10px; border-radius: 6px; color: var(--rail-ink); display: flex; justify-content: space-between; gap: 8px; }
+.nav button:hover { background: rgba(255,255,255,0.07); }
+.nav button[aria-current="page"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.nav button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.nav .count { font-family: var(--font-mono); font-size: 12px; opacity: 0.85; }
+.rail-foot { margin-top: auto; color: var(--rail-muted); font-size: 12px; display: grid; gap: 8px; }
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding-block: 12px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--panel); border-bottom: 1px solid var(--line); }
+.topbar .ctx { color: var(--muted); font-size: 13px; }
+.topbar .ctx b { color: var(--ink); }
+.lic { margin-left: auto; display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+.meter { width: 120px; height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.work { padding-block: 20px 40px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; align-content: start; }
+h1 { font-size: 24px; margin: 0; text-wrap: balance; }
+h2 { font-size: 17px; margin: 0; }
+p { margin: 0; }
+.sub { color: var(--muted); max-width: 70ch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 4px; }
+.tile .n { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile .l { color: var(--muted); font-size: 13px; }
+.btn { cursor: pointer; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 12px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.small { padding: 3px 8px; font-size: 13px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+input[type=text], select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+textarea { width: 100%; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tree { display: grid; gap: 2px; }
+.tree button { all: unset; cursor: pointer; padding: 5px 8px; border-radius: 6px; display: flex; gap: 6px; align-items: center; }
+.tree button:hover { background: var(--accent-soft); }
+.tree button[aria-selected="true"] { background: var(--accent-soft); font-weight: 700; box-shadow: inset 3px 0 0 var(--accent); }
+.tree button:focus-visible { outline: 2px solid var(--amber); }
+.tree .twig { color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: pre; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--accent-soft); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: none; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.mute { background: var(--line); color: var(--muted); }
+.policy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 300px); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.policy:last-child { border-bottom: none; }
+.policy .help { color: var(--muted); font-size: 13px; }
+.src { font-size: 12px; color: var(--muted); }
+.src.local { color: var(--accent); font-weight: 700; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { all: unset; cursor: pointer; padding: 8px 12px; border-bottom: 3px solid transparent; }
+.tabs button[aria-selected="true"] { border-color: var(--accent); font-weight: 700; }
+.tabs button:focus-visible { outline: 2px solid var(--amber); }
+.mission { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.mission:last-child { border-bottom: none; }
+.check { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.check.done { background: var(--good); color: var(--panel); }
+.check.todo { border: 2px solid var(--line); color: var(--muted); }
+.hint { color: var(--muted); font-size: 13px; }
+.ticket { background: var(--amber-soft); border: 1px solid var(--amber); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 4px; }
+.ticket b { color: var(--ink); }
+.log { display: grid; gap: 0; }
+.log div { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.log time { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.notice { border-radius: var(--r); padding: 10px 12px; font-size: 14px; }
+.notice.bad { background: var(--bad-soft); color: var(--bad); }
+.notice.good { background: var(--good-soft); color: var(--good); }
+.notice.info { background: var(--accent-soft); color: var(--ink); }
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--rail); color: var(--rail-ink); padding: 10px 14px; border-radius: var(--r); box-shadow: 0 6px 24px rgba(0,0,0,0.25); max-width: min(360px, calc(100vw - 32px)); }
+/* Chromebook preview */
+.laptop { width: 100%; max-width: 640px; }
+.screen { aspect-ratio: 16 / 10; max-width: 100%; border: 10px solid #1e2427; border-radius: 12px 12px 4px 4px; position: relative; overflow: hidden; background: #24343a; color: #fff; }
+.base { height: 14px; background: #2c3438; border-radius: 0 0 14px 14px; margin: 0 -4%; }
+.wall-school { background: radial-gradient(circle at 30% 30%, #1b8f8c, #0b3d42 70%); }
+.wall-free { background: repeating-linear-gradient(45deg, #b04ad1 0 24px, #ff8a00 24px 48px, #2ec4ff 48px 72px); }
+.desk { position: absolute; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 12px; gap: 8px; }
+.wall-label { font-size: 13px; background: rgba(0,0,0,0.35); padding: 4px 8px; border-radius: 6px; justify-self: start; }
+.browser { background: #fff; color: #172327; border-radius: 8px; align-self: center; justify-self: center; width: min(88%, 460px); padding: 10px; display: grid; gap: 8px; font-size: 13px; }
+.browser .bar { display: flex; gap: 6px; }
+.browser input { flex: 1; background: #eef3f3; border: 1px solid #c9d6d4; color: #172327; }
+.shelf { justify-self: center; display: flex; gap: 6px; background: rgba(0,0,0,0.45); padding: 6px 10px; border-radius: 99px; flex-wrap: wrap; justify-content: center; }
+.shelf span { background: rgba(255,255,255,0.9); color: #172327; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+.lock { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px; padding: 20px; background: #0d1416; }
+.lock .msg { max-width: 40ch; font-size: 15px; }
+.kiosk { position: absolute; inset: 0; background: #f4f7fb; color: #172327; display: grid; place-content: center; text-align: center; gap: 8px; padding: 16px; }
+.signin { position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; text-align: center; background: #20323a; }
+.signin .card { background: #fff; color: #172327; border-radius: 10px; padding: 16px 20px; display: grid; gap: 8px; min-width: 220px; }
+.overlay { position: fixed; inset: 0; background: rgba(8,16,18,0.55); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.dialog { background: var(--panel); border-radius: 12px; border: 1px solid var(--line); width: min(540px, 100%); max-height: 90vh; overflow: auto; padding: 18px; display: grid; gap: 12px; }
+.disclaimer { font-size: 12px; color: var(--muted); }
+@media (max-width: 760px) {
+  .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .rail { padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 10px; }
+  .nav { grid-auto-flow: column; overflow-x: auto; }
+  .nav button { white-space: nowrap; }
+  .rail-foot { display: none; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .policy { grid-template-columns: minmax(0, 1fr); }
+  .lic { margin-left: 0; }
+  .topbar, .work { padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+}
+@media (prefers-reduced-motion: no-preference) { .nav button, .btn, .tree button { transition: background 0.15s, border-color 0.15s; } }
+</style>
+<style>
+/* Farm connectivity additions */
+body { margin: 0; }
+.stepper { display: grid; gap: 12px; align-content: start; }
+.mapwrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; }
+.mapwrap svg { width: 100%; height: auto; display: block; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.stat { border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 2px; background: var(--panel); }
+.stat b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.stat.bad { border-color: var(--bad); background: var(--bad-soft); }
+.stat.good { border-color: var(--good); }
+.choice { display: grid; gap: 6px; }
+.choice label { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; font-size: 14px; }
+.walk button.pt { all: unset; cursor: pointer; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <a href="index.html" class="hub-back" style="color:var(--rail-ink);font-size:13px;text-decoration:underline;text-underline-offset:3px">&larr; All simulators</a><div class="brand"><b>Farm Network Planner</b><span>Harlan Family Dairy · training</span></div>
+    <nav class="nav" id="nav" aria-label="Sections"></nav>
+    <div class="rail-foot">
+      <span>Farm Connectivity Planner for 10-150-164 Mobile Devices. A practice tool, not a vendor product. Harlan Family Dairy is fictional, and all prices, speeds and signal numbers are illustrative, for comparing choices.</span>
+      <button class="btn small" id="resetBtn" style="color:var(--rail-ink);background:transparent;border-color:var(--rail-muted)">Reset simulator</button>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="ctx">Client <b>Harlan Family Dairy</b></div>
+      <div class="ctx">Planner <b id="whoName"></b></div>
+      <div class="lic" id="lic"></div>
+    </header>
+    <main class="work" id="work"></main>
+  </div>
+</div>
+<div id="layer"></div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = (n) => "$" + Math.round(n).toLocaleString();
+
+  // ---------- World (map units are about 3 feet; numbers are illustrative) ----------
+  const BLDG = [
+    { id: "house", name: "House and farm office", x: 60, y: 470, w: 120, h: 110, metal: false, fill: "#f4efe6" },
+    { id: "shed", name: "Machine shed", x: 200, y: 500, w: 100, h: 90, metal: true, fill: "#d9dde0" },
+    { id: "calf", name: "Calf barn", x: 400, y: 120, w: 100, h: 80, metal: false, fill: "#f4efe6" },
+    { id: "parlor", name: "Milking parlor", x: 510, y: 260, w: 100, h: 80, metal: true, fill: "#d9dde0" },
+    { id: "barnA", name: "Freestall barn A", x: 630, y: 180, w: 310, h: 100, metal: true, fill: "#d9dde0" },
+    { id: "barnB", name: "Freestall barn B", x: 630, y: 340, w: 310, h: 100, metal: true, fill: "#d9dde0" },
+  ];
+  const SLOTS = [
+    { id: "office", name: "Farm office (in the house)", x: 120, y: 525, side: "house" },
+    { id: "yard", name: "Pole in the yard (outdoor)", x: 200, y: 450, side: "house", outdoorOnly: true },
+    { id: "shed", name: "Machine shed", x: 250, y: 545, side: "house" },
+    { id: "parlor", name: "Milking parlor", x: 560, y: 300, side: "barns", harsh: true },
+    { id: "barnA", name: "Barn A, center", x: 785, y: 230, side: "barns", harsh: true },
+    { id: "barnB", name: "Barn B, center", x: 785, y: 390, side: "barns", harsh: true },
+  ];
+  const POINTS = [
+    { id: "office", name: "Office desk", x: 140, y: 540, need: true },
+    { id: "yard", name: "Pickup in the yard", x: 300, y: 450 },
+    { id: "shed", name: "Machine shed workbench", x: 260, y: 560 },
+    { id: "parlor", name: "Robot stalls in the parlor", x: 575, y: 315, need: true },
+    { id: "barnA", name: "Barn A, middle aisle", x: 720, y: 230, need: true },
+    { id: "barnB", name: "Barn B, far end", x: 900, y: 400, need: true },
+    { id: "pasture", name: "North pasture (cow collars)", x: 200, y: 150 },
+    { id: "nfield", name: "North field, 1 mile out (tractor)", off: true, cell: 1 },
+    { id: "back40", name: "Back 40, 2 miles out (tractor)", off: true, cell: 0 },
+  ];
+  const COST = { apIndoor: 180, apOutdoor: 380, mesh: 300, bridge: 450, fiber: 9500, ethernet: 400, poe: 280, ctlLocal: 400, ctlCloudMo: 10, booster: 1100, gateway: 650, rtkCellMo: 70, rtkBase: 4200, ups: 220, dslMo: 65, leo: 599, leoMo: 120, cell: 450, cellMo: 60 };
+  const BUDGET = { once: 10000, monthly: 200 };
+  const INTERNET = {
+    dsl: { name: "DSL (current)", speed: "6 Mbps down / 0.5 up", note: "Already installed. Too slow for video calls with the vet and remote robot support." },
+    leo: { name: "LEO satellite", speed: "about 100+ Mbps down / 10+ up, low latency", note: "Dish on the house roof needs a clear view of the sky." },
+    cell: { name: "Cellular router (LTE)", speed: "about 10 to 25 Mbps with an outdoor antenna", note: "Uses the one bar of LTE outside. Data plan has a monthly cap (50 GB)." },
+  };
+
+  function seed() {
+    return { v: 1, student: "",
+      aps: { office: "none", yard: "none", shed: "none", parlor: "none", barnA: "none", barnB: "none" },
+      link: "none", poe: false, controller: "none", booster: false, gateway: "none", rtk: "none", upsCloset: false, upsOffice: false,
+      primary: "dsl", backup: "none", failover: false,
+      net: { old: true, staffOn: false, staffSec: "WPA2-Personal (one shared password)", guestOn: false, guestIso: false, equipOn: false, robot: "wifi", dealer: "port" },
+      walk: "barnB", view: "home",
+      log: [{ t: stamp(), m: "Simulator started. The farm has DSL, one house router and one Wi-Fi network for everything." }] };
+  }
+  function stamp() { return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  const KEY = "md-farm-sim-v1";
+  let S;
+  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+  if (!S || S.v !== 1) S = seed();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage blocked: keep working in memory */ } }
+  function log(m) { S.log.unshift({ t: stamp(), m }); if (S.log.length > 300) S.log.length = 300; }
+  let toastTimer;
+  function toast(m) { const l = $("#layer"); const o = l.querySelector(".toast"); if (o) o.remove(); const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); t.textContent = m; l.appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 3400); }
+
+  // ---------- Network model ----------
+  const linkOK = () => S.link === "bridge" || S.link === "fiber";
+  const linkUnstable = () => S.link === "mesh";
+  const barnsUp = () => (linkOK() || linkUnstable()) && S.poe;
+  function apActive(slot) { if (S.aps[slot.id] === "none") return false; return slot.side === "house" ? true : barnsUp(); }
+  const inside = (b, x, y) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+  function rssiFrom(slot, x, y) {
+    const d = Math.hypot(slot.x - x, slot.y - y);
+    let r = -35 - 30 * Math.log10(Math.max(1, d / 10)) + (S.aps[slot.id] === "outdoor" ? 3 : 0);
+    BLDG.forEach((b) => { if (inside(b, slot.x, slot.y) !== inside(b, x, y)) r -= b.metal ? 25 : 6; });
+    if (slot.side === "barns" && linkUnstable()) r -= 12;
+    return r;
+  }
+  function wifiAt(x, y) { let best = -200, from = null; SLOTS.forEach((s) => { if (!apActive(s)) return; const r = rssiFrom(s, x, y); if (r > best) { best = r; from = s; } }); return { rssi: best, from }; }
+  function cellAt(p) {
+    if (p.off) return p.cell;
+    const inMetal = BLDG.some((b) => b.metal && inside(b, p.x, p.y));
+    if (S.booster && ["parlor", "barnA", "barnB"].includes(p.id)) return 3;
+    return inMetal ? 0 : 1;
+  }
+  function collarAt(p) { if (!["parlor", "barnA", "barnB", "pasture"].includes(p.id)) return null; const g = S.gateway; return g === "house" || (g === "parlor" && barnsUp()); }
+  function rtkAt(p) { if (!p.off) return null; if (S.rtk === "base") return "Fixed (about 2 cm), from the farm's own base station"; if (S.rtk === "cell") return p.cell > 0 ? "Fixed most of the time, over cellular" : "No corrections: no cell signal out here"; return "No corrections: about 1 to 3 m accuracy only"; }
+  function costs() {
+    let once = 0, mo = 0;
+    SLOTS.forEach((s) => { if (S.aps[s.id] === "indoor") once += COST.apIndoor; if (S.aps[s.id] === "outdoor") once += COST.apOutdoor; });
+    once += { none: 0, mesh: COST.mesh, bridge: COST.bridge, fiber: COST.fiber, ethernet: COST.ethernet }[S.link];
+    if (S.poe) once += COST.poe;
+    if (S.controller === "local") once += COST.ctlLocal; if (S.controller === "cloud") mo += COST.ctlCloudMo;
+    if (S.booster) once += COST.booster;
+    if (S.gateway !== "none") once += COST.gateway;
+    if (S.rtk === "cell") mo += COST.rtkCellMo; if (S.rtk === "base") once += COST.rtkBase;
+    if (S.upsCloset) once += COST.ups; if (S.upsOffice) once += COST.ups;
+    const used = new Set([S.primary, S.backup].filter((x) => x && x !== "none"));
+    if (used.has("dsl")) mo += COST.dslMo;
+    if (used.has("leo")) { once += COST.leo; mo += COST.leoMo; }
+    if (used.has("cell")) { once += COST.cell; mo += COST.cellMo; }
+    return { once, mo };
+  }
+  const wifiOK = (id) => { const p = POINTS.find((x) => x.id === id); return wifiAt(p.x, p.y).rssi >= -67; };
+
+  // ---------- Checklist ----------
+  function missions() {
+    const n = S.net, c = costs(), apCount = SLOTS.filter((s) => S.aps[s.id] !== "none").length;
+    return [
+      { t: "Replace the slow DSL as the main internet", d: "Video calls with the vet and remote support from the robot company need more speed than DSL gives.", ok: S.primary !== "dsl" },
+      { t: "Add a backup internet line that takes over automatically", d: "Use a different technology from the main line, and turn on automatic failover so the robots' alerts still reach Dana at 2 a.m.", ok: S.backup !== "none" && S.backup !== S.primary && S.failover },
+      { t: "Link the house to the barns", d: "The parlor is about 1,450 feet from the house. Pick a link that is reliable and affordable.", ok: linkOK() && S.poe },
+      { t: "Get strong Wi-Fi (−67 dBm or better) in the office, the parlor and both barns", d: "Robots, collars and tablets need real-time data. Metal walls block signal, so check each spot on the Walk test page.", ok: ["office", "parlor", "barnA", "barnB"].every(wifiOK) && !linkUnstable() },
+      { t: "Use access points rated for the barns", d: "The parlor and barns are wet, dusty and full of ammonia. Use outdoor-rated (IP-rated) access points there.", ok: ["parlor", "barnA", "barnB"].every((id) => S.aps[id] === "outdoor") },
+      { t: "Manage every access point from one controller", d: "One dashboard for settings, firmware updates and outage alerts.", ok: S.controller !== "none" && apCount > 0 },
+      { t: "Connect the robot milker the way the dealer requires", d: "Wired Ethernet, on the equipment network, with the dealer reaching it only through a secure remote-access connection.", ok: n.robot === "wired" && n.equipOn && n.dealer === "vpn" && barnsUp() },
+      { t: "Separate staff, guest and equipment networks", d: "Retire the one shared network. Staff use strong security, guests are isolated, and equipment gets its own network (VLAN).", ok: !n.old && n.staffOn && /WPA3|Enterprise/.test(n.staffSec) && n.guestOn && n.guestIso && n.equipOn },
+      { t: "Make phones work inside the barns for calls", d: "The vet couldn't send test results from the parlor. Cell signal outside is one bar; inside the metal barns it's none.", ok: S.booster },
+      { t: "Cover the barns and pasture for the cow collars", d: "The collars send data over a long-range, low-power radio to a gateway.", ok: ["parlor", "barnA", "barnB", "pasture"].every((id) => collarAt(POINTS.find((p) => p.id === id))) },
+      { t: "Give the tractor RTK corrections in every field", d: "Auto-steer needs corrections. The Back 40 has no cell signal.", ok: POINTS.filter((p) => p.off).every((p) => rtkAt(p).startsWith("Fixed")) },
+      { t: "Keep the network running through a power blink", d: "Battery backup (UPS) for the network closet in the parlor and the router in the office.", ok: S.upsCloset && S.upsOffice },
+      { t: "Stay within Dana's budget", d: `${money(BUDGET.once)} for equipment and ${money(BUDGET.monthly)} a month for service (illustrative).`, ok: apCount >= 3 && c.once <= BUDGET.once && c.mo <= BUDGET.monthly },
+    ];
+  }
+
+  // ---------- Views ----------
+  const NAV = [["home", "Overview"], ["map", "Farm map"], ["equip", "Equipment and budget"], ["internet", "Internet and backup"], ["networks", "Networks and security"], ["walk", "Walk test"], ["missions", "Checklist"], ["log", "Activity log"], ["report", "Submit report"]];
+  function renderNav() {
+    const ms = missions(), done = ms.filter((m) => m.ok).length, c = costs();
+    const counts = { missions: `${done}/${ms.length}`, equip: c.once > BUDGET.once || c.mo > BUDGET.monthly ? "over" : null };
+    $("#nav").innerHTML = NAV.map(([v, l]) => `<button data-view="${v}" ${S.view === v ? 'aria-current="page"' : ""}><span>${l}</span>${counts[v] != null ? `<span class="count">${counts[v]}</span>` : ""}</button>`).join("");
+    $("#whoName").textContent = S.student || "Student";
+    $("#lic").innerHTML = `Checklist ${done} of ${ms.length}<span class="meter"><i style="width:${Math.round((done / ms.length) * 100)}%"></i></span>`;
+  }
+  function statsHTML() {
+    const c = costs(), st = (v, l, ok) => `<div class="stat ${ok === false ? "bad" : ok ? "good" : ""}"><b>${v}</b><span>${l}</span></div>`;
+    const need = POINTS.filter((p) => p.need), good = need.filter((p) => wifiOK(p.id)).length;
+    return `<div class="stats">${st(money(c.once), `Equipment (budget ${money(BUDGET.once)})`, c.once <= BUDGET.once)}${st(money(c.mo) + "/mo", `Service (budget ${money(BUDGET.monthly)}/mo)`, c.mo <= BUDGET.monthly)}${st(`${good} of ${need.length}`, "Key spots at −67 dBm or better", good === need.length)}${st(INTERNET[S.primary].name, "Main internet", S.primary !== "dsl")}${st(S.backup === "none" ? "None" : INTERNET[S.backup].name, "Backup internet", S.backup !== "none" && S.failover)}</div><p class="hint">All prices, speeds and signal numbers are illustrative.</p>`;
+  }
+  function vHome() {
+    return `<div><h1>Overview</h1><p class="sub">Plan the network for Harlan Family Dairy: internet, the link to the barns, Wi-Fi, cellular, cow collars and the tractor's GPS. Every choice changes the coverage map and the budget.</p></div>
+      <div class="ticket"><b>Message from Dana Harlan, owner</b><span>"The robotic milkers arrive next spring and every cow gets a collar. Right now we have slow DSL, one house router and one Wi-Fi network with the password on the fridge. Phones drop the minute we walk into the barns, and the dealer wants the robots wired and on their own network. The new tractor needs RTK out on the Back 40, where there's no cell signal at all. And I can't spend more than ${money(BUDGET.once)} on equipment or ${money(BUDGET.monthly)} a month. What's the plan?"</span></div>
+      ${statsHTML()}
+      <div class="panel"><h2>How to use the planner</h2><p class="hint"><b>Farm map</b> shows coverage. <b>Equipment and budget</b> is where you install access points, the barn link and other gear. <b>Internet and backup</b> picks the main and backup lines. <b>Networks and security</b> sets up Wi-Fi networks and how the robot connects. <b>Walk test</b> checks the signal anywhere on the farm.</p></div>
+      <div class="panel"><h2>Recent activity</h2>${logHTML(5)}</div>`;
+  }
+  function mapSVG() {
+    const cells = [];
+    for (let x = 10; x < 1000; x += 20) for (let y = 10; y < 600; y += 20) { const r = wifiAt(x, y).rssi; if (r >= -75) cells.push(`<rect x="${x - 10}" y="${y - 10}" width="20" height="20" fill="${r >= -67 ? "#2e7d4f" : "#e8a33d"}" fill-opacity="0.35"/>`); }
+    const linkLine = S.link === "none" ? "" : `<line x1="150" y1="480" x2="540" y2="270" stroke="${linkOK() ? "#0e7c7b" : "#b5482f"}" stroke-width="5" stroke-dasharray="${S.link === "fiber" || S.link === "ethernet" ? "0" : "14 8"}"/><text x="300" y="360" font-size="16" fill="#12343b" transform="rotate(-28 300 360)">${{ mesh: "mesh (through metal walls)", bridge: "point-to-point bridge", fiber: "buried fiber", ethernet: "Ethernet cable (too long)" }[S.link]}</text>`;
+    return `<svg viewBox="0 0 1000 640" role="img" aria-label="Map of the dairy with buildings, access points and Wi-Fi coverage">
+      <rect width="1000" height="640" fill="#eef3e8"/>
+      <rect x="40" y="40" width="330" height="300" fill="#cfe3b8"/><text x="60" y="70" font-size="18" fill="#2f4a1f">North pasture</text>
+      <rect x="0" y="605" width="1000" height="35" fill="#b9b2a5"/><text x="20" y="628" font-size="15" fill="#3d3a33">County road</text>
+      <text x="840" y="628" font-size="15" fill="#3d3a33">Cell tower 6 mi east →</text>
+      <text x="720" y="70" font-size="15" fill="#3d3a33">Fields and Back 40 ↗</text>
+      <circle cx="420" cy="420" r="16" fill="#c9c2b2"/><circle cx="462" cy="420" r="16" fill="#c9c2b2"/><text x="400" y="455" font-size="13" fill="#5a503f">Grain bins</text>
+      ${BLDG.map((b) => `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="${b.fill}" stroke="${b.metal ? "#5b6b70" : "#9a8f7a"}" stroke-width="${b.metal ? 5 : 3}"/><text x="${b.x + 6}" y="${b.y + 18}" font-size="14" fill="#172327" font-weight="700">${b.name}</text>`).join("")}
+      ${cells.join("")}
+      ${linkLine}
+      ${SLOTS.map((s) => { const a = S.aps[s.id]; if (a === "none") return `<circle cx="${s.x}" cy="${s.y}" r="7" fill="#fff" stroke="#999" stroke-width="2"/>`; const on = apActive(s); return `<g><circle cx="${s.x}" cy="${s.y}" r="13" fill="${on ? "#0e7c7b" : "#b5482f"}" stroke="#fff" stroke-width="3"/><text x="${s.x}" y="${s.y + 5}" font-size="12" text-anchor="middle" fill="#fff" font-weight="700">AP</text></g>`; }).join("")}
+    </svg>`;
+  }
+  function vMap() {
+    return `<div><h1>Farm map</h1><p class="sub">Shaded squares show Wi-Fi coverage from the access points you've installed. Metal buildings block most of the signal from outside, so devices inside need an access point inside.</p></div>
+      <div class="mapwrap">${mapSVG()}</div>
+      <div class="legend"><span><i style="background:#2e7d4f;opacity:.5"></i>−67 dBm or better (real-time devices, calls)</span><span><i style="background:#e8a33d;opacity:.6"></i>−67 to −75 dBm (web and email)</span><span><i style="background:#0e7c7b"></i>Access point working</span><span><i style="background:#b5482f"></i>Access point with no connection</span><span><i style="background:#fff;border:1px solid #999"></i>Empty mounting spot</span></div>
+      ${statsHTML()}`;
+  }
+  const sel = (id, opts, v) => `<select id="${id}">${opts.map(([k, l]) => `<option value="${k}" ${String(k) === String(v) ? "selected" : ""}>${l}</option>`).join("")}</select>`;
+  function vEquip() {
+    const linkNote = { none: "Nothing connects the barns yet.", mesh: "Consumer mesh relays Wi-Fi through the air. Through metal walls at this distance it drops out (illustrative).", bridge: "A pair of directional radios, house roof to parlor roof, with clear line of sight. About 1,450 ft is easy for a bridge.", fiber: "The most reliable link, but trenching a quarter mile is expensive.", ethernet: "Ethernet only works to about 328 ft (100 m). This run is about 1,450 ft, so it won't work." }[S.link];
+    return `<div><h1>Equipment and budget</h1><p class="sub">Install equipment and watch the budget. Prices are illustrative.</p></div>${statsHTML()}
+      <div class="panel"><h2>Access points</h2><div class="tablewrap"><table><thead><tr><th>Mounting spot</th><th>Access point</th><th>Status</th></tr></thead><tbody>
+      ${SLOTS.map((s) => `<tr><td>${s.name}${s.harsh ? '<br><span class="hint">Wet, dusty, ammonia</span>' : ""}</td><td>${sel("ap-" + s.id, [["none", "None"], ...(s.outdoorOnly ? [] : [["indoor", `Indoor access point (${money(COST.apIndoor)})`]]), ["outdoor", `Outdoor-rated access point, IP67 (${money(COST.apOutdoor)})`]], S.aps[s.id])}</td><td>${S.aps[s.id] === "none" ? '<span class="hint">Empty</span>' : apActive(s) ? (s.harsh && S.aps[s.id] === "indoor" ? '<span class="pill warn">Working, but not rated for this environment</span>' : '<span class="pill good">Working</span>') : '<span class="pill bad">No connection: needs the barn link and a PoE switch</span>'}</td></tr>`).join("")}
+      </tbody></table></div></div>
+      <div class="panel"><div class="policy"><div><b>Link from the house to the barns</b><p class="help">${linkNote}</p></div>${sel("link", [["none", "None"], ["mesh", `Consumer mesh kit (${money(COST.mesh)})`], ["bridge", `Point-to-point wireless bridge pair (${money(COST.bridge)})`], ["fiber", `Buried fiber (${money(COST.fiber)})`], ["ethernet", `Ethernet cable (${money(COST.ethernet)})`]], S.link)}</div>
+        <div class="policy"><div><b>PoE switch in the parlor network closet</b><p class="help">Powers the barn access points over their Ethernet cables (Power over Ethernet) and connects the robots.</p></div><label style="display:flex;gap:6px"><input type="checkbox" id="poe" ${S.poe ? "checked" : ""}>Install (${money(COST.poe)})</label></div>
+        <div class="policy"><div><b>AP controller</b><p class="help">One dashboard to configure and monitor every access point.</p></div>${sel("controller", [["none", "None (log in to each access point)"], ["cloud", `Cloud-managed (${money(COST.ctlCloudMo)}/mo)`], ["local", `Local hardware controller (${money(COST.ctlLocal)})`]], S.controller)}</div>
+        <div class="policy"><div><b>Cellular signal booster</b><p class="help">An outside antenna on the barn roof catches the one bar of LTE and rebroadcasts it inside the parlor and barns.</p></div><label style="display:flex;gap:6px"><input type="checkbox" id="booster" ${S.booster ? "checked" : ""}>Install (${money(COST.booster)})</label></div>
+        <div class="policy"><div><b>Collar gateway</b><p class="help">Receives the cow collars' long-range, low-power radio signals and sends the data over the farm network.</p></div>${sel("gateway", [["none", "None"], ["parlor", `On the parlor roof (${money(COST.gateway)})`], ["house", `In the house attic (${money(COST.gateway)})`]], S.gateway)}</div>
+        <div class="policy"><div><b>RTK corrections for the tractor</b><p class="help">Corrections improve GPS from a few meters to about 2 cm for auto-steer.</p></div>${sel("rtk", [["none", "None"], ["cell", `Network RTK over cellular (${money(COST.rtkCellMo)}/mo)`], ["base", `Farm RTK base station with radio (${money(COST.rtkBase)})`]], S.rtk)}</div>
+        <div class="policy"><div><b>Battery backup (UPS)</b><p class="help">Keeps the network up through power blinks and gives the generator time to start.</p></div><div class="choice"><label><input type="checkbox" id="upsCloset" ${S.upsCloset ? "checked" : ""}><span>Parlor network closet (${money(COST.ups)})</span></label><label><input type="checkbox" id="upsOffice" ${S.upsOffice ? "checked" : ""}><span>Office router (${money(COST.ups)})</span></label></div></div></div>`;
+  }
+  function vInternet() {
+    const opt = (none) => [...(none ? [["none", "None"]] : []), ...Object.entries(INTERNET).map(([k, v]) => [k, `${v.name}: ${v.speed}`])];
+    return `<div><h1>Internet and backup</h1><p class="sub">The router in the farm office can use two internet lines and switch to the backup automatically when the main line fails (failover).</p></div>
+      <div class="panel"><div class="policy"><div><b>Main internet</b><p class="help">${esc(INTERNET[S.primary].note)}</p></div>${sel("primary", opt(false), S.primary)}</div>
+        <div class="policy"><div><b>Backup internet</b><p class="help">${S.backup === "none" ? "No backup. If the main line goes down, robot alerts can't reach Dana's phone." : esc(INTERNET[S.backup].note)}</p></div>${sel("backup", opt(true), S.backup)}</div>
+        <div class="policy"><div><b>Automatic failover</b><p class="help">Switch to the backup without anyone touching the router.</p></div><label style="display:flex;gap:6px"><input type="checkbox" id="failover" ${S.failover ? "checked" : ""}>On</label></div></div>
+      <div class="panel"><h2>Estimated data use per month (illustrative)</h2><div class="tablewrap"><table><tbody>
+        <tr><td>Office, video calls with the vet, records</td><td class="num">150 GB</td></tr><tr><td>Robot remote support and software updates</td><td class="num">30 GB</td></tr><tr><td>Cow collars and sensors</td><td class="num">1 GB</td></tr><tr><td>Staff phones on Wi-Fi</td><td class="num">60 GB</td></tr><tr><td><b>Total</b></td><td class="num"><b>about 240 GB</b></td></tr></tbody></table></div>
+        ${S.primary === "cell" ? '<div class="notice bad">A 50 GB cellular plan won\'t cover about 240 GB a month as the main line. It works as a backup for outages.</div>' : ""}</div>`;
+  }
+  function vNetworks() {
+    const n = S.net;
+    return `<div><h1>Networks and security</h1><p class="sub">The controller pushes these Wi-Fi networks (SSIDs) to every access point. Each one sits on its own VLAN, so devices on one can't see devices on another unless the router allows it.</p></div>
+      <div class="panel"><div class="policy"><div><b>Old network "HarlanFarm"</b><p class="help">Everything on one network, password "cows123" on the fridge.</p></div><label style="display:flex;gap:6px"><input type="checkbox" id="old" ${n.old ? "checked" : ""}>Keep it</label></div>
+        <div class="policy"><div><b>Staff network (VLAN 10)</b><p class="help">Dana, the herd manager and workers' tablets and phones.</p></div><div class="stepper"><label style="display:flex;gap:6px"><input type="checkbox" id="staffOn" ${n.staffOn ? "checked" : ""}>Create</label>${sel("staffSec", [["WPA2-Personal (one shared password)", "WPA2-Personal (one shared password)"], ["WPA3-Personal", "WPA3-Personal"], ["WPA2/WPA3-Enterprise (each person signs in)", "WPA2/WPA3-Enterprise (each person signs in)"]], n.staffSec)}</div></div>
+        <div class="policy"><div><b>Guest network (VLAN 20)</b><p class="help">The vet, the feed rep, visitors. Internet only.</p></div><div class="choice"><label><input type="checkbox" id="guestOn" ${n.guestOn ? "checked" : ""}><span>Create</span></label><label><input type="checkbox" id="guestIso" ${n.guestIso ? "checked" : ""}><span>Isolate guests from farm devices and from each other</span></label></div></div>
+        <div class="policy"><div><b>Equipment network (VLAN 30)</b><p class="help">Robots, collar gateway, sensors and cameras.</p></div><label style="display:flex;gap:6px"><input type="checkbox" id="equipOn" ${n.equipOn ? "checked" : ""}>Create</label></div>
+        <div class="policy"><div><b>How the robot milker connects</b><p class="help">The dealer's install guide: "Robots must be wired. Do not connect over Wi-Fi."</p></div>${sel("robot", [["wifi", "Wi-Fi to the nearest access point"], ["wired", "Wired Ethernet to the parlor PoE switch"]], n.robot)}</div>
+        <div class="policy"><div><b>Dealer remote support</b><p class="help">The robot company needs to reach the robots to fix problems.</p></div>${sel("dealer", [["port", "Open a port on the router to the robots"], ["vpn", "Dealer's secure remote-access (VPN) connection to the equipment network only"]], n.dealer)}</div></div>`;
+  }
+  function vWalk() {
+    const p = POINTS.find((x) => x.id === S.walk) || POINTS[0];
+    const w = p.off ? null : wifiAt(p.x, p.y), cell = cellAt(p), col = collarAt(p), rtk = rtkAt(p);
+    const rate = (r) => (r >= -67 ? '<span class="pill good">Good for real-time devices</span>' : r >= -75 ? '<span class="pill warn">OK for web, not for robots or calls</span>' : '<span class="pill bad">No usable Wi-Fi</span>');
+    return `<div><h1>Walk test</h1><p class="sub">Pick a spot to see what a phone, tablet or device would get there. It's like walking the farm with a Wi-Fi analyzer.</p></div>
+      <div class="panel"><div class="row walk">${POINTS.map((x) => `<button class="btn small ${x.id === p.id ? "primary" : ""}" data-walk="${x.id}">${x.name}</button>`).join("")}</div></div>
+      <div class="panel"><h2>${p.name}</h2><div class="tablewrap"><table><tbody>
+        ${w ? `<tr><td>Wi-Fi</td><td>${w.rssi > -200 ? `${Math.round(w.rssi)} dBm from ${w.from.name}` : "No access point in range"}</td><td>${rate(w.rssi)}${w.from && w.from.side === "barns" && linkUnstable() ? ' <span class="pill bad">Drops out (mesh)</span>' : ""}</td></tr>` : ""}
+        <tr><td>Cellular</td><td>${cell} bar${cell === 1 ? "" : "s"} of LTE${cell === 3 ? " (booster)" : ""}</td><td>${cell >= 2 ? '<span class="pill good">Calls and data work</span>' : cell === 1 ? '<span class="pill warn">Texts, slow data, dropped calls</span>' : '<span class="pill bad">No service</span>'}</td></tr>
+        ${col === null ? "" : `<tr><td>Cow collars</td><td>${col ? "Gateway receives collar data" : "No gateway in range"}</td><td>${col ? '<span class="pill good">Covered</span>' : '<span class="pill bad">Not covered</span>'}</td></tr>`}
+        ${rtk ? `<tr><td>Tractor RTK</td><td>${rtk}</td><td>${rtk.startsWith("Fixed") ? '<span class="pill good">Auto-steer works</span>' : '<span class="pill bad">Auto-steer won\'t hold the line</span>'}</td></tr>` : ""}
+      </tbody></table></div></div>`;
+  }
+  function vMissions() {
+    const ms = missions();
+    return `<div><h1>Dana's checklist</h1><p class="sub">Each item checks itself as soon as your plan meets it.</p></div>
+      <div class="panel">${ms.map((m, i) => `<div class="mission"><span class="check ${m.ok ? "done" : "todo"}">${m.ok ? "✓" : i + 1}</span><div><b>${m.t}</b><p class="hint">${m.d}</p></div></div>`).join("")}</div>`;
+  }
+  function logHTML(n) { return `<div class="log">${S.log.slice(0, n).map((l) => `<div><time>${l.t}</time><span>${esc(l.m)}</span></div>`).join("")}</div>`; }
+  function vLog() { return `<div><h1>Activity log</h1><p class="sub">Every change, newest first.</p></div><div class="panel">${logHTML(300)}</div>`; }
+  function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).toUpperCase().padStart(7, "0"); }
+  function reportText() {
+    const ms = missions(), c = costs(), n = S.net;
+    const body = [
+      "Farm Connectivity Planner report (Harlan Family Dairy)",
+      `Planner: ${S.student || "(name not entered)"}`,
+      `Generated: ${new Date().toLocaleString()}`,
+      `Checklist: ${ms.filter((m) => m.ok).length} of ${ms.length} complete`,
+      ...ms.map((m) => `  [${m.ok ? "x" : " "}] ${m.t}`),
+      "", `Internet: main ${INTERNET[S.primary].name}; backup ${S.backup === "none" ? "none" : INTERNET[S.backup].name}; failover ${S.failover ? "on" : "off"}`,
+      `Barn link: ${S.link}; PoE switch ${S.poe ? "yes" : "no"}; controller ${S.controller}`,
+      `Access points: ${SLOTS.map((s) => `${s.id}=${S.aps[s.id]}`).join(", ")}`,
+      `Other: booster ${S.booster ? "yes" : "no"}; collar gateway ${S.gateway}; RTK ${S.rtk}; UPS closet ${S.upsCloset ? "yes" : "no"}, office ${S.upsOffice ? "yes" : "no"}`,
+      `Networks: old shared network ${n.old ? "KEPT" : "retired"}; staff ${n.staffOn ? n.staffSec : "none"}; guest ${n.guestOn ? (n.guestIso ? "isolated" : "NOT isolated") : "none"}; equipment ${n.equipOn ? "yes" : "no"}; robot ${n.robot}; dealer ${n.dealer}`,
+      "Walk test:", ...POINTS.map((p) => { const w = p.off ? null : wifiAt(p.x, p.y); return `  ${p.name}: ${w ? (w.rssi > -200 ? Math.round(w.rssi) + " dBm" : "no Wi-Fi") + "; " : ""}cell ${cellAt(p)} bar(s)${collarAt(p) === null ? "" : "; collars " + (collarAt(p) ? "yes" : "no")}${rtkAt(p) ? "; RTK " + rtkAt(p) : ""}`; }),
+      `Cost (illustrative): ${money(c.once)} equipment; ${money(c.mo)}/month`,
+      "", `Changes logged: ${S.log.length}`,
+    ].join("\n");
+    return body + `\nVerification code: ${hash((S.student || "") + "|" + body.replace(/Generated: .*\n/, ""))}`;
+  }
+  function vReport() {
+    return `<div><h1>Submit report</h1><p class="sub">Enter your name, then copy this report into your Solve It submission. The verification code changes whenever your plan or name changes.</p></div>
+      <div class="panel"><div class="row"><label for="stuName">Your name</label><input type="text" id="stuName" value="${esc(S.student)}" placeholder="First and last name"><button class="btn primary" id="saveName">Save name</button></div></div>
+      <div class="panel"><div class="row" style="justify-content:space-between"><h2>Network plan report</h2><button class="btn" id="copyRep">Copy report</button></div>
+      <div class="tablewrap" style="border:none"><pre class="mono" id="repText" style="margin:0;white-space:pre-wrap;font-size:13px">${esc(reportText())}</pre></div></div>`;
+  }
+  function render() {
+    renderNav();
+    const v = { home: vHome, map: vMap, equip: vEquip, internet: vInternet, networks: vNetworks, walk: vWalk, missions: vMissions, log: vLog, report: vReport }[S.view] || vHome;
+    $("#work").innerHTML = v();
+    save();
+  }
+
+  // ---------- Events ----------
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button"); if (!t || t.disabled) return;
+    if (t.dataset.view) { S.view = t.dataset.view; render(); return; }
+    if (t.dataset.walk) { S.walk = t.dataset.walk; render(); return; }
+    switch (t.id) {
+      case "resetBtn": $("#layer").innerHTML = `<div class="overlay"><div class="dialog" role="dialog" aria-modal="true"><h2>Reset the simulator?</h2><p>This erases your plan and log.</p><div class="row" style="justify-content:flex-end"><button class="btn" id="rsCancel">Keep my work</button><button class="btn danger" id="rsGo">Reset</button></div></div></div>`; break;
+      case "rsCancel": $("#layer").innerHTML = ""; break;
+      case "rsGo": S = seed(); $("#layer").innerHTML = ""; render(); toast("Simulator reset."); break;
+      case "saveName": S.student = $("#stuName").value.trim(); log(`Planner name set to "${S.student}".`); render(); toast("Name saved."); break;
+      case "copyRep": { const txt = $("#repText").textContent; const fb = () => { const r = document.createRange(); r.selectNodeContents($("#repText")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Report selected. Press Ctrl + C (or Cmd + C) to copy."); };
+        try { navigator.clipboard.writeText(txt).then(() => toast("Report copied."), fb); } catch (err) { fb(); } break; }
+    }
+  });
+  const LABEL = { link: "Barn link", controller: "AP controller", gateway: "Collar gateway", rtk: "RTK corrections", primary: "Main internet", backup: "Backup internet", staffSec: "Staff network security", robot: "Robot connection", dealer: "Dealer remote support" };
+  document.addEventListener("change", (e) => {
+    const t = e.target, id = t.id;
+    if (id.startsWith("ap-")) { const s = id.slice(3); S.aps[s] = t.value; log(`${SLOTS.find((x) => x.id === s).name}: ${t.value === "none" ? "access point removed" : t.value + " access point installed"}.`); }
+    else if (["link", "controller", "gateway", "rtk", "primary", "backup"].includes(id)) { S[id] = t.value; log(`${LABEL[id]}: ${t.options[t.selectedIndex].text}.`); }
+    else if (["poe", "booster", "upsCloset", "upsOffice", "failover"].includes(id)) { S[id] = t.checked; log(`${id}: ${t.checked ? "on" : "off"}.`); }
+    else if (["staffSec", "robot", "dealer"].includes(id)) { S.net[id] = t.value; log(`${LABEL[id]}: ${t.options[t.selectedIndex].text}.`); }
+    else if (["old", "staffOn", "guestOn", "guestIso", "equipOn"].includes(id)) { S.net[id] = t.checked; log(`Network setting ${id}: ${t.checked ? "on" : "off"}.`); }
+    else return;
+    render();
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("#layer .overlay")) $("#layer").innerHTML = ""; });
+  render();
+})();
+</script>
+
+</body>
+</html>

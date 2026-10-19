@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Sign Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a console shell. Left rail of sections, top context bar (org unit + licenses), work area on the right. Collapses to a top tab strip on phones. */
+:root {
+  --bg: #f3f6f6; --panel: #ffffff; --ink: #172327; --muted: #5b6b70; --line: #d6e1df;
+  --accent: #0e7c7b; --accent-ink: #ffffff; --accent-soft: #e2f1f0; --amber: #e8a33d; --amber-soft: #fbefdb;
+  --good: #2e7d4f; --good-soft: #e3f3e8; --warn: #9a6200; --warn-soft: #fff3d6; --bad: #b5482f; --bad-soft: #f9e3dd;
+  --rail: #12343b; --rail-ink: #e8f1f0; --rail-muted: #9fb7b5;
+  --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.45; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.mono { font-family: var(--font-mono); font-size: 0.9em; }
+.shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100%; }
+.rail { background: var(--rail); color: var(--rail-ink); padding-block: 18px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; display: flex; flex-direction: column; gap: 18px; }
+.brand { display: grid; gap: 2px; }
+.brand b { font-size: 17px; letter-spacing: 0.01em; }
+.brand span { color: var(--rail-muted); font-size: 12px; }
+.nav { display: grid; gap: 2px; }
+.nav button { all: unset; cursor: pointer; padding: 8px 10px; border-radius: 6px; color: var(--rail-ink); display: flex; justify-content: space-between; gap: 8px; }
+.nav button:hover { background: rgba(255,255,255,0.07); }
+.nav button[aria-current="page"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.nav button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.nav .count { font-family: var(--font-mono); font-size: 12px; opacity: 0.85; }
+.rail-foot { margin-top: auto; color: var(--rail-muted); font-size: 12px; display: grid; gap: 8px; }
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding-block: 12px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--panel); border-bottom: 1px solid var(--line); }
+.topbar .ctx { color: var(--muted); font-size: 13px; }
+.topbar .ctx b { color: var(--ink); }
+.lic { margin-left: auto; display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+.meter { width: 120px; height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.work { padding-block: 20px 40px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; align-content: start; }
+h1 { font-size: 24px; margin: 0; text-wrap: balance; }
+h2 { font-size: 17px; margin: 0; }
+p { margin: 0; }
+.sub { color: var(--muted); max-width: 70ch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 4px; }
+.tile .n { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile .l { color: var(--muted); font-size: 13px; }
+.btn { cursor: pointer; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 12px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.small { padding: 3px 8px; font-size: 13px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+input[type=text], select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+textarea { width: 100%; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tree { display: grid; gap: 2px; }
+.tree button { all: unset; cursor: pointer; padding: 5px 8px; border-radius: 6px; display: flex; gap: 6px; align-items: center; }
+.tree button:hover { background: var(--accent-soft); }
+.tree button[aria-selected="true"] { background: var(--accent-soft); font-weight: 700; box-shadow: inset 3px 0 0 var(--accent); }
+.tree button:focus-visible { outline: 2px solid var(--amber); }
+.tree .twig { color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: pre; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--accent-soft); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: none; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.mute { background: var(--line); color: var(--muted); }
+.policy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 300px); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.policy:last-child { border-bottom: none; }
+.policy .help { color: var(--muted); font-size: 13px; }
+.src { font-size: 12px; color: var(--muted); }
+.src.local { color: var(--accent); font-weight: 700; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { all: unset; cursor: pointer; padding: 8px 12px; border-bottom: 3px solid transparent; }
+.tabs button[aria-selected="true"] { border-color: var(--accent); font-weight: 700; }
+.tabs button:focus-visible { outline: 2px solid var(--amber); }
+.mission { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.mission:last-child { border-bottom: none; }
+.check { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.check.done { background: var(--good); color: var(--panel); }
+.check.todo { border: 2px solid var(--line); color: var(--muted); }
+.hint { color: var(--muted); font-size: 13px; }
+.ticket { background: var(--amber-soft); border: 1px solid var(--amber); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 4px; }
+.ticket b { color: var(--ink); }
+.log { display: grid; gap: 0; }
+.log div { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.log time { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.notice { border-radius: var(--r); padding: 10px 12px; font-size: 14px; }
+.notice.bad { background: var(--bad-soft); color: var(--bad); }
+.notice.good { background: var(--good-soft); color: var(--good); }
+.notice.info { background: var(--accent-soft); color: var(--ink); }
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--rail); color: var(--rail-ink); padding: 10px 14px; border-radius: var(--r); box-shadow: 0 6px 24px rgba(0,0,0,0.25); max-width: min(360px, calc(100vw - 32px)); }
+/* Chromebook preview */
+.laptop { width: 100%; max-width: 640px; }
+.screen { aspect-ratio: 16 / 10; max-width: 100%; border: 10px solid #1e2427; border-radius: 12px 12px 4px 4px; position: relative; overflow: hidden; background: #24343a; color: #fff; }
+.base { height: 14px; background: #2c3438; border-radius: 0 0 14px 14px; margin: 0 -4%; }
+.wall-school { background: radial-gradient(circle at 30% 30%, #1b8f8c, #0b3d42 70%); }
+.wall-free { background: repeating-linear-gradient(45deg, #b04ad1 0 24px, #ff8a00 24px 48px, #2ec4ff 48px 72px); }
+.desk { position: absolute; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 12px; gap: 8px; }
+.wall-label { font-size: 13px; background: rgba(0,0,0,0.35); padding: 4px 8px; border-radius: 6px; justify-self: start; }
+.browser { background: #fff; color: #172327; border-radius: 8px; align-self: center; justify-self: center; width: min(88%, 460px); padding: 10px; display: grid; gap: 8px; font-size: 13px; }
+.browser .bar { display: flex; gap: 6px; }
+.browser input { flex: 1; background: #eef3f3; border: 1px solid #c9d6d4; color: #172327; }
+.shelf { justify-self: center; display: flex; gap: 6px; background: rgba(0,0,0,0.45); padding: 6px 10px; border-radius: 99px; flex-wrap: wrap; justify-content: center; }
+.shelf span { background: rgba(255,255,255,0.9); color: #172327; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+.lock { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px; padding: 20px; background: #0d1416; }
+.lock .msg { max-width: 40ch; font-size: 15px; }
+.kiosk { position: absolute; inset: 0; background: #f4f7fb; color: #172327; display: grid; place-content: center; text-align: center; gap: 8px; padding: 16px; }
+.signin { position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; text-align: center; background: #20323a; }
+.signin .card { background: #fff; color: #172327; border-radius: 10px; padding: 16px 20px; display: grid; gap: 8px; min-width: 220px; }
+.overlay { position: fixed; inset: 0; background: rgba(8,16,18,0.55); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.dialog { background: var(--panel); border-radius: 12px; border: 1px solid var(--line); width: min(540px, 100%); max-height: 90vh; overflow: auto; padding: 18px; display: grid; gap: 12px; }
+.disclaimer { font-size: 12px; color: var(--muted); }
+@media (max-width: 760px) {
+  .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .rail { padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 10px; }
+  .nav { grid-auto-flow: column; overflow-x: auto; }
+  .nav button { white-space: nowrap; }
+  .rail-foot { display: none; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .policy { grid-template-columns: minmax(0, 1fr); }
+  .lic { margin-left: 0; }
+  .topbar, .work { padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+}
+@media (prefers-reduced-motion: no-preference) { .nav button, .btn, .tree button { transition: background 0.15s, border-color 0.15s; } }
+</style>
+<style>
+/* Signage additions */
+body { margin: 0; }
+.stepper { display: grid; gap: 12px; align-content: start; }
+.screenbox { background: #111; border-radius: 10px; padding: 10px; }
+.screenbox .disp { position: relative; overflow: hidden; border-radius: 4px; container-type: size; background: #000; }
+.screenbox.land .disp { aspect-ratio: 16 / 9; }
+.screenbox.port { max-width: 300px; }
+.screenbox.port .disp { aspect-ratio: 9 / 16; }
+.disp .inner { padding: 4cqh 5cqw; display: grid; gap: 1.5cqh; align-content: start; height: 100%; box-sizing: border-box; line-height: 1.2; }
+.disp .row2 { display: flex; justify-content: space-between; gap: 8px; }
+.disp .so { text-decoration: line-through; opacity: 0.55; }
+.disp .tag { font-size: 0.6em; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; margin-left: 6px; }
+.alarm { background: #b5482f !important; color: #fff !important; text-align: center; place-content: center; font-size: 6cqh !important; }
+.offline { background: #222 !important; color: #bbb !important; text-align: center; place-content: center; }
+.swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+.swatches label { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; }
+.swatches i { width: 20px; height: 20px; border-radius: 4px; display: inline-block; border: 1px solid var(--line); }
+.acc td { font-size: 13px; }
+.rulecard { border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 6px; background: var(--panel); }
+input[type=number] { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; width: 90px; }
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <a href="index.html" class="hub-back" style="color:var(--rail-ink);font-size:13px;text-decoration:underline;text-underline-offset:3px">&larr; All simulators</a><div class="brand"><b>Smart Sign Studio</b><span>Harbor View Hospital · training</span></div>
+    <nav class="nav" id="nav" aria-label="Sections"></nav>
+    <div class="rail-foot">
+      <span>Smart Sign Studio for 10-150-164 Mobile Devices. A practice tool modeled on digital signage content management systems; not a vendor product. Harbor View Hospital and Harbor Café are fictional.</span>
+      <button class="btn small" id="resetBtn" style="color:var(--rail-ink);background:transparent;border-color:var(--rail-muted)">Reset simulator</button>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="ctx">Organization <b>Harbor View Hospital</b></div>
+      <div class="ctx">Designer <b id="whoName"></b></div>
+      <div class="lic" id="lic"></div>
+    </header>
+    <main class="work" id="work"></main>
+  </div>
+</div>
+<div id="layer"></div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const hm = (min) => { if (min >= 1440) return "Midnight"; const h = Math.floor(min / 60), m = min % 60, ap = h >= 12 ? "PM" : "AM"; return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${ap}`; };
+  const TIMES = Array.from({ length: 49 }, (_, i) => i * 30);
+
+  const SCREENS = [
+    { id: "cafe", name: "Harbor Café menu board", orient: "land", dist: 12, note: "55-inch screen above the café counter. People read it from the line, about 12 feet away." },
+    { id: "lobby", name: "Lobby wayfinding kiosk", orient: "port", dist: 2, touch: true, note: "Portrait touchscreen inside the main entrance. People stand right in front of it." },
+    { id: "er", name: "ER waiting room screen", orient: "land", dist: 20, note: "65-inch screen on the far wall of the ER waiting room, about 20 feet from most seats." },
+  ];
+  const scr = (id) => SCREENS.find((s) => s.id === id);
+  const PX_PER_IN = 40; // a 1080p screen of this size shows about 40 pixels per inch
+  const minFont = (s) => Math.max(28, Math.ceil((s.dist / 10) * PX_PER_IN)); // about 1 inch of letter height per 10 ft of viewing distance
+  const PALETTE = [["Navy", "#12343b"], ["White", "#ffffff"], ["Black", "#111111"], ["Yellow", "#ffd23f"], ["Light gray", "#d9d9d9"], ["Teal", "#0e7c7b"], ["Red", "#c0392b"], ["Cream", "#f7f1e3"]];
+  const TPL = { menu: "Menu board", way: "Wayfinding directory", wait: "Wait time", msg: "Message" };
+  const DAYS = ["Weekdays", "Weekends", "Every day"];
+
+  function seed() {
+    return { v: 1, student: "",
+      items: [{ id: "it-welcome", name: "Welcome slide (old)", tpl: "msg", fields: { title: "Welcome to Harbor View!", body: "We're glad you're here. Ask at the front desk for directions to any department, or use the map by the elevators." }, font: 24, fg: "#ffd23f", bg: "#ffffff", dur: 4, anim: "Flashing" }],
+      sched: { cafe: { def: "", slots: [] }, lobby: { def: "it-welcome", slots: [] }, er: { def: "", slots: [] } },
+      players: { cafe: { online: true, cache: false }, lobby: { online: true, cache: false }, er: { online: false, cache: false } },
+      users: [{ id: "u1", name: "Monica Reyes", role: "Admin", screens: ["cafe", "lobby", "er"] }, { id: "u2", name: "Victor Hughes", role: "Admin", screens: ["cafe", "lobby", "er"] }, { id: "u3", name: "Tyler Brandt (marketing intern)", role: "Admin", screens: ["cafe", "lobby", "er"] }],
+      rules: { cooler: { on: false, temp: 50, mins: 60, text: false, soldout: false, banner: false }, fire: { on: false, scope: "lobby" }, busy: { on: false, count: 80 } },
+      kiosk: "48 to 60 inches above the floor", analytics: "On: estimate viewers' age, gender and attention",
+      pv: { screen: "cafe", day: "Weekdays", min: 480, cooler: "normal", fire: false }, flags: {}, selItem: "it-welcome", view: "home",
+      log: [{ t: stamp(), m: "Simulator started. Only one old slide exists, and the ER screen's player is offline." }] };
+  }
+  function stamp() { return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  const KEY = "md-signage-sim-v1";
+  let S;
+  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+  if (!S || S.v !== 1) S = seed();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage blocked: keep working in memory */ } }
+  function log(m) { S.log.unshift({ t: stamp(), m }); if (S.log.length > 300) S.log.length = 300; }
+  let toastTimer;
+  function toast(m) { const l = $("#layer"); const o = l.querySelector(".toast"); if (o) o.remove(); const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); t.textContent = m; l.appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 3400); }
+
+  // ---------- Helpers ----------
+  const item = (id) => S.items.find((i) => i.id === id);
+  const lines = (s) => String(s || "").split(/\n+/).map((x) => x.trim()).filter(Boolean);
+  function menuRows(it) { return lines(it.fields.lines).map((l) => { const p = l.split(",").map((x) => x.trim()); return { name: p[0] || "", price: p[1] || "", cold: /cold/i.test(p.slice(2).join(" ")) }; }); }
+  function wayRows(it) { return lines(it.fields.lines).map((l) => { const p = l.split(",").map((x) => x.trim()); return { dest: p[0] || "", dir: p.slice(1).join(", ") }; }); }
+  function words(it) { return Object.values(it.fields).join(" ").split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).length; }
+  const needDur = (it) => Math.max(5, words(it)); // about 1 second per word, 5 seconds minimum
+  function lum(hex) { const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4))); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
+  function contrast(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+  function screensFor(id) { return SCREENS.filter((s) => S.sched[s.id].def === id || S.sched[s.id].slots.some((sl) => sl.item === id)); }
+  function accCheck(it, s) {
+    const r = [];
+    const c = contrast(it.fg, it.bg);
+    r.push({ k: "Contrast", ok: c >= 4.5, v: `${c.toFixed(1)}:1 (need 4.5:1 or more)` });
+    if (s) r.push({ k: `Text size on ${s.name}`, ok: it.font >= minFont(s), v: `${it.font} px (need ${minFont(s)} px or more at ${s.dist} ft)` });
+    r.push({ k: "Time on screen", ok: it.dur >= needDur(it), v: `${it.dur} s for ${words(it)} words (need ${needDur(it)} s or more)` });
+    r.push({ k: "No flashing", ok: it.anim !== "Flashing", v: it.anim });
+    return r;
+  }
+  const passes = (it) => { const ss = screensFor(it.id); return (ss.length ? ss : [null]).every((s) => accCheck(it, s).every((x) => x.ok)); };
+  const inSlot = (sl, day, min) => (sl.days === "Every day" || sl.days === day) && sl.from <= min && min < sl.to;
+  function nowItem(sid, day, min) { const sc = S.sched[sid]; const sl = sc.slots.find((x) => inSlot(x, day, min)); return item(sl ? sl.item : sc.def); }
+
+  // ---------- Missions ----------
+  function missions() {
+    const items = S.items;
+    const menus = items.filter((i) => i.tpl === "menu" && menuRows(i).length >= 4 && menuRows(i).every((r) => r.name && /\d/.test(r.price)));
+    const cafe = S.sched.cafe;
+    const sl = (from, to) => cafe.slots.find((x) => x.days !== "Weekends" && x.from === from && x.to === to && menus.some((m) => m.id === x.item));
+    const bf = sl(390, 630), lu = sl(630, 840);
+    const closedDef = item(cafe.def) && item(cafe.def).tpl === "msg" && /closed/i.test(Object.values(item(cafe.def).fields).join(" "));
+    const way = items.some((i) => i.tpl === "way" && wayRows(i).filter((r) => r.dest && r.dir).length >= 5 && screensFor(i.id).some((s) => s.id === "lobby"));
+    const wait = items.some((i) => i.tpl === "wait" && /live/i.test(i.fields.source || "") && screensFor(i.id).some((s) => s.id === "er"));
+    const scheduled = items.filter((i) => screensFor(i.id).length);
+    const cr = S.rules.cooler, fr = S.rules.fire;
+    const u = (n) => S.users.find((x) => x.name.startsWith(n));
+    const coldMarked = menus.some((m) => menuRows(m).some((r) => r.cold));
+    return [
+      { t: "Get the ER screen back online and turn on offline playback for every screen", d: "The ER player hasn't checked in for three days. Offline playback keeps the last content running if the network drops.", ok: S.players.er.online && SCREENS.every((s) => S.players[s.id].cache) },
+      { t: "Build a breakfast menu and a lunch menu for the café", d: "At least four items each, with prices. Mark items that are kept in the walk-in cooler as cold (for example: Yogurt parfait, 3.50, cold).", ok: bf && lu && bf.item !== lu.item },
+      { t: "Schedule the café board by time of day", d: "Weekdays: breakfast 6:30 to 10:30 AM, lunch 10:30 AM to 2:00 PM. The rest of the time (the default), show a message that the café is closed and where to find the vending machines.", ok: !!(bf && lu && closedDef) },
+      { t: "Put a wayfinding directory on the lobby kiosk", d: "At least five departments with directions, such as: Emergency Department, Left past the elevators, 1st floor.", ok: way },
+      { t: "Show live ER wait times on the ER screen", d: "Use a Wait time slide that pulls from the ER tracking system, not a number someone types in.", ok: wait && S.players.er.online },
+      { t: "Make every scheduled slide pass the accessibility check", d: "Contrast, text size for the screen's viewing distance, enough time to read, and no flashing.", ok: scheduled.length >= 4 && scheduled.every(passes) },
+      { t: "Put the kiosk's touch controls within reach", d: "People using wheelchairs have to be able to reach every button. Accessibility guidelines put the reach range at about 15 to 48 inches above the floor.", ok: S.kiosk.startsWith("24 to 48") },
+      { t: "Set the cooler rule", d: "If the walk-in cooler is above 41°F for 30 minutes or less, text Victor and mark cold menu items sold out.", ok: cr.on && cr.temp <= 41 && cr.temp >= 38 && cr.mins <= 30 && cr.text && cr.soldout && coldMarked },
+      { t: "Test the cooler rule", d: "Simulate a cooler failure in the Preview and confirm the cold items show as sold out.", ok: !!S.flags.testedCooler },
+      { t: "Make the fire alarm take over every screen", d: "An emergency message has to override every screen, not just one.", ok: fr.on && fr.scope === "all" },
+      { t: "Fix who can publish where", d: "Monica stays Admin. Victor should edit and publish the café board only. The intern should not be an Admin and should not be able to touch the ER screen.", ok: u("Monica").role === "Admin" && ["Editor", "Publisher"].includes(u("Victor").role) && u("Victor").screens.join() === "cafe" && u("Tyler").role !== "Admin" && !u("Tyler").screens.includes("er") },
+      { t: "Turn off the audience analytics camera", d: "Monica's policy: no cameras estimating patients' and visitors' age or gender in a hospital.", ok: S.analytics.startsWith("Off") },
+    ];
+  }
+
+  // ---------- Views ----------
+  const NAV = [["home", "Overview"], ["screens", "Screens"], ["content", "Content"], ["sched", "Playlists and schedules"], ["sensors", "Sensors and triggers"], ["acc", "Accessibility check"], ["preview", "Preview"], ["missions", "Checklist"], ["log", "Activity log"], ["report", "Submit report"]];
+  function renderNav() {
+    const ms = missions(), done = ms.filter((m) => m.ok).length, fails = S.items.filter((i) => screensFor(i.id).length && !passes(i)).length;
+    const counts = { missions: `${done}/${ms.length}`, content: S.items.length, acc: fails ? `${fails} fail` : "OK" };
+    $("#nav").innerHTML = NAV.map(([v, l]) => `<button data-view="${v}" ${S.view === v ? 'aria-current="page"' : ""}><span>${l}</span>${counts[v] != null ? `<span class="count">${counts[v]}</span>` : ""}</button>`).join("");
+    $("#whoName").textContent = S.student || "Student";
+    $("#lic").innerHTML = `Checklist ${done} of ${ms.length}<span class="meter"><i style="width:${Math.round((done / ms.length) * 100)}%"></i></span>`;
+  }
+  function vHome() {
+    return `<div><h1>Overview</h1><p class="sub">Harbor View Hospital bought three digital signs and a content management system (CMS). Your job is to make them useful, readable and safe.</p></div>
+      <div class="ticket"><b>Message from Monica Reyes, facilities director</b><span>"Victor's printed café menu is always out of date, and last month the walk-in cooler died overnight and we served food that should have been tossed. Visitors keep getting lost, and the ER waiting room has no idea how long the wait is. We now have a menu board in the café, a touch kiosk in the lobby and a screen in the ER. Please set them up so they're accessible to everyone, and make sure a fire alarm takes over every screen. Also, the vendor turned on some camera feature that guesses people's age. Not in my hospital."</span></div>
+      <div class="cards3" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">${SCREENS.map((s) => `<div class="panel"><h2>${s.name}</h2><p class="hint">${s.note}</p><p class="hint">Minimum text size: ${minFont(s)} px · Player: ${S.players[s.id].online ? '<span class="pill good">Online</span>' : '<span class="pill bad">Offline</span>'}</p></div>`).join("")}</div>
+      <div class="panel"><h2>How the CMS works</h2><p class="hint"><b>Content</b> holds slides built from templates. <b>Playlists and schedules</b> decide what each screen shows and when. <b>Sensors and triggers</b> change content automatically when something happens. <b>Accessibility check</b> tests every scheduled slide. <b>Preview</b> shows any screen at any time.</p></div>
+      <div class="panel"><h2>Recent activity</h2>${logHTML(5)}</div>`;
+  }
+  function vScreens() {
+    return `<div><h1>Screens</h1><p class="sub">Each screen has a media player connected to the network. The CMS sends it content and checks that it's alive.</p></div>
+      <div class="tablewrap"><table><thead><tr><th>Screen</th><th>Player</th><th>Offline playback</th><th></th></tr></thead><tbody>
+      ${SCREENS.map((s) => { const p = S.players[s.id]; return `<tr><td><b>${s.name}</b><br><span class="hint">${s.note}</span></td><td>${p.online ? '<span class="pill good">Online · checked in 1 min ago</span>' : '<span class="pill bad">Offline · last check-in 3 days ago, stuck installing an update</span>'}</td><td><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-cache="${s.id}" ${p.cache ? "checked" : ""}>Keep playing saved content if the network drops</label></td><td>${p.online ? "" : `<button class="btn small primary" data-reboot="${s.id}">Reboot player remotely</button>`}</td></tr>`; }).join("")}
+      </tbody></table></div>
+      <div class="panel"><h2>Kiosk mounting</h2><div class="policy"><div><b>Height of the touch controls</b><p class="help">Where the buttons and on-screen controls sit on the lobby kiosk.</p></div><select id="kiosk">${["24 to 48 inches above the floor", "48 to 60 inches above the floor", "60 to 72 inches above the floor"].map((o) => `<option ${o === S.kiosk ? "selected" : ""}>${o}</option>`).join("")}</select></div></div>
+      <div class="panel"><h2>Users and permissions</h2><div class="tablewrap"><table><thead><tr><th>User</th><th>Role</th><th>Screens</th><th></th></tr></thead><tbody>
+      ${S.users.map((u) => `<tr><td>${esc(u.name)}</td><td><select id="role-${u.id}">${["Admin", "Publisher", "Editor"].map((r) => `<option ${r === u.role ? "selected" : ""}>${r}</option>`).join("")}</select></td><td>${SCREENS.map((s) => `<label style="display:inline-flex;gap:4px;margin-right:8px"><input type="checkbox" class="us-${u.id}" value="${s.id}" ${u.screens.includes(s.id) ? "checked" : ""}>${s.name.split(" ")[s.id === "er" ? 0 : 1]}</label>`).join("")}</td><td><button class="btn small" data-saveuser="${u.id}">Save</button></td></tr>`).join("")}
+      </tbody></table></div><p class="hint"><b>Admin:</b> every screen and every setting. <b>Publisher:</b> edits and publishes to their screens. <b>Editor:</b> edits content for their screens; an Admin approves it.</p></div>
+      <div class="panel"><h2>Audience analytics</h2><div class="policy"><div><b>Camera in each sign</b><p class="help">Some signage players include a camera that estimates the age, gender and attention of people looking at the screen, to measure or target ads.</p></div><select id="analytics">${["On: estimate viewers' age, gender and attention", "Off"].map((o) => `<option ${o === S.analytics ? "selected" : ""}>${o}</option>`).join("")}</select></div></div>`;
+  }
+  const swatch = (name, val) => `<div class="swatches">${PALETTE.map(([n, h]) => `<label><input type="radio" name="${name}" value="${h}" ${h === val ? "checked" : ""}><i style="background:${h}"></i>${n}</label>`).join("")}</div>`;
+  function vContent() {
+    const it = item(S.selItem) || S.items[0];
+    let fields = "";
+    if (it) {
+      const f = it.fields;
+      if (it.tpl === "menu") fields = `<label for="fTitle">Title</label><input type="text" id="fTitle" value="${esc(f.title)}"><label for="fLines">Items, one per line: name, price, and the word cold if it's kept in the walk-in cooler</label><textarea id="fLines" rows="7">${esc(f.lines)}</textarea>`;
+      else if (it.tpl === "way") fields = `<label for="fTitle">Title</label><input type="text" id="fTitle" value="${esc(f.title)}"><label for="fLines">Destinations, one per line: department, directions</label><textarea id="fLines" rows="7">${esc(f.lines)}</textarea>`;
+      else if (it.tpl === "wait") fields = `<label for="fTitle">Title</label><input type="text" id="fTitle" value="${esc(f.title)}"><label for="fSource">Wait time comes from</label><select id="fSource">${["ER tracking system (live, updates every 5 minutes)", "Typed in by front desk staff"].map((o) => `<option ${o === f.source ? "selected" : ""}>${o}</option>`).join("")}</select><label for="fNote">Note under the number</label><input type="text" id="fNote" value="${esc(f.note)}">`;
+      else fields = `<label for="fTitle">Headline</label><input type="text" id="fTitle" value="${esc(f.title)}"><label for="fBody">Body</label><textarea id="fBody" rows="3">${esc(f.body)}</textarea>`;
+    }
+    return `<div><h1>Content</h1><p class="sub">Build slides from templates. Each slide has its own text size, colors, time on screen and transition.</p></div>
+      <div class="grid2"><div class="panel"><h2>Slides</h2><div class="tree">${S.items.map((x) => `<button data-item="${x.id}" aria-selected="${it && x.id === it.id}">${esc(x.name)} <span class="hint">· ${TPL[x.tpl]}</span></button>`).join("")}</div>
+        <div class="stepper"><input type="text" id="newName" placeholder="Slide name, e.g. Breakfast menu"><select id="newTpl">${Object.entries(TPL).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select><button class="btn primary" id="addItem">New slide</button></div></div>
+      ${it ? `<div class="panel stepper"><h2>${esc(it.name)}</h2><span class="hint">Template: ${TPL[it.tpl]}</span>${fields}
+        <div class="row"><label for="fFont">Text size (px)</label><input type="number" id="fFont" min="12" max="200" value="${it.font}"><label for="fDur">Seconds on screen</label><input type="number" id="fDur" min="2" max="120" value="${it.dur}"><label for="fAnim">Transition</label><select id="fAnim">${["None", "Fade", "Flashing"].map((o) => `<option ${o === it.anim ? "selected" : ""}>${o}</option>`).join("")}</select></div>
+        <b style="font-size:14px">Text color</b>${swatch("fg", it.fg)}<b style="font-size:14px">Background</b>${swatch("bg", it.bg)}
+        <div class="row"><button class="btn primary" id="saveItem">Save slide</button><button class="btn danger" id="delItem">Delete</button></div>
+        <div class="screenbox land" style="max-width:420px"><div class="disp">${slideHTML(it, { h: 1080 })}</div></div></div>` : '<div class="panel"><p class="hint">No slides yet.</p></div>'}</div>`;
+  }
+  function slideHTML(it, o) {
+    const hpx = o.h || 1080, soldOut = !!o.soldOut, f = it.fields;
+    const st = `background:${it.bg};color:${it.fg};font-size:calc(${it.font} * 100cqh / ${hpx});height:100%`;
+    let body = "";
+    if (it.tpl === "menu") body = `<b style="font-size:1.3em">${esc(f.title)}</b>${menuRows(it).map((r) => `<div class="row2 ${soldOut && r.cold ? "so" : ""}"><span>${esc(r.name)}${soldOut && r.cold ? '<span class="tag">Sold out</span>' : ""}</span><span>${r.price ? "$" + esc(r.price.replace("$", "")) : ""}</span></div>`).join("")}`;
+    else if (it.tpl === "way") body = `<b style="font-size:1.3em">${esc(f.title)}</b>${wayRows(it).map((r) => `<div><b>${esc(r.dest)}</b><br><span style="font-size:0.8em">${esc(r.dir)}</span></div>`).join("")}`;
+    else if (it.tpl === "wait") body = `<b style="font-size:1.2em">${esc(f.title)}</b><div style="font-size:2.4em;font-weight:700">${/live/i.test(f.source) ? "47 min" : "?? min"}</div><span>${esc(f.note)}</span>${/live/i.test(f.source) ? "" : '<span style="font-size:0.7em">(typed in by staff, last updated 9:15 AM)</span>'}`;
+    else body = `<b style="font-size:1.3em">${esc(f.title)}</b><span>${esc(f.body)}</span>`;
+    return `<div class="inner" style="${st}">${body}${o.banner ? '<div style="background:#c0392b;color:#fff;padding:2px 6px;font-weight:700">Some items are unavailable right now. Ask the cashier.</div>' : ""}</div>`;
+  }
+  function vSched() {
+    const opts = (sel) => `<option value="">(nothing)</option>${S.items.map((i) => `<option value="${i.id}" ${i.id === sel ? "selected" : ""}>${esc(i.name)}</option>`).join("")}`;
+    return `<div><h1>Playlists and schedules</h1><p class="sub">Each screen shows its scheduled slide during a time slot (dayparting), and its default slide the rest of the time.</p></div>
+      ${SCREENS.map((s) => { const sc = S.sched[s.id]; return `<div class="panel"><h2>${s.name}</h2>
+        <div class="row"><label for="def-${s.id}">Default (when no slot is active)</label><select id="def-${s.id}" data-def="${s.id}">${opts(sc.def)}</select></div>
+        ${sc.slots.length ? `<div class="tablewrap"><table><thead><tr><th>Days</th><th>From</th><th>To</th><th>Slide</th><th></th></tr></thead><tbody>${sc.slots.map((sl) => `<tr><td>${sl.days}</td><td>${hm(sl.from)}</td><td>${hm(sl.to)}</td><td>${esc((item(sl.item) || {}).name || "(deleted)")}</td><td><button class="btn small danger" data-delslot="${s.id}:${sl.id}">Remove</button></td></tr>`).join("")}</tbody></table></div>` : '<p class="hint">No time slots.</p>'}
+        <div class="row"><select id="sd-${s.id}">${DAYS.map((d) => `<option>${d}</option>`).join("")}</select><select id="sf-${s.id}">${TIMES.map((t) => `<option value="${t}" ${t === 390 ? "selected" : ""}>${hm(t)}</option>`).join("")}</select> to <select id="st-${s.id}">${TIMES.map((t) => `<option value="${t}" ${t === 630 ? "selected" : ""}>${hm(t)}</option>`).join("")}</select><select id="si-${s.id}">${opts("")}</select><button class="btn small primary" data-addslot="${s.id}">Add time slot</button></div></div>`; }).join("")}`;
+  }
+  function vSensors() {
+    const c = S.rules.cooler, f = S.rules.fire, b = S.rules.busy;
+    return `<div><h1>Sensors and triggers</h1><p class="sub">Connected sensors can change what the signs show and alert staff. Each rule says: if this happens, do that.</p></div>
+      <div class="tablewrap"><table><thead><tr><th>Sensor</th><th>Connection</th><th>Reading now</th></tr></thead><tbody>
+        <tr><td>Walk-in cooler temperature</td><td>Wireless sensor to a gateway on the hospital IoT network</td><td>38°F</td></tr>
+        <tr><td>Fire alarm panel</td><td>Relay from the fire alarm system</td><td>Normal</td></tr>
+        <tr><td>Café people counter</td><td>Overhead sensor at the café door</td><td>42 people</td></tr>
+        <tr><td>ER tracking system</td><td>Data feed (API) from the ER's patient tracking software</td><td>Average wait 47 min</td></tr></tbody></table></div>
+      <div class="rulecard"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="rcOn" ${c.on ? "checked" : ""}><b>Cooler rule</b></label>
+        <div class="row">If the cooler is above <input type="number" id="rcTemp" value="${c.temp}" min="30" max="70">°F for <input type="number" id="rcMins" value="${c.mins}" min="1" max="240"> minutes, then:</div>
+        <label><input type="checkbox" id="rcText" ${c.text ? "checked" : ""}> Text Victor (café manager)</label>
+        <label><input type="checkbox" id="rcSold" ${c.soldout ? "checked" : ""}> Mark cold menu items sold out on the café board</label>
+        <label><input type="checkbox" id="rcBanner" ${c.banner ? "checked" : ""}> Show a "some items unavailable" banner on the café board</label>
+        <p class="hint">Food safety rules generally require cold food to be held at 41°F or below.</p><div><button class="btn primary small" id="saveCooler">Save cooler rule</button></div></div>
+      <div class="rulecard"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="rfOn" ${f.on ? "checked" : ""}><b>Fire alarm rule</b></label>
+        <div class="row">When the fire alarm is active, show the evacuation message on <select id="rfScope"><option value="lobby" ${f.scope === "lobby" ? "selected" : ""}>the lobby kiosk only</option><option value="all" ${f.scope === "all" ? "selected" : ""}>every screen, overriding everything else</option></select></div><div><button class="btn primary small" id="saveFire">Save fire rule</button></div></div>
+      <div class="rulecard"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="rbOn" ${b.on ? "checked" : ""}><b>Café busy rule (optional)</b></label>
+        <div class="row">When more than <input type="number" id="rbCount" value="${b.count}" min="10" max="300"> people are in the café, show "The café is busy. Try the coffee cart on 2." on the lobby kiosk.</div><div><button class="btn small" id="saveBusy">Save busy rule</button></div></div>`;
+  }
+  function vAcc() {
+    const used = S.items.filter((i) => screensFor(i.id).length), unused = S.items.filter((i) => !screensFor(i.id).length);
+    return `<div><h1>Accessibility check</h1><p class="sub">Every slide that's scheduled on a screen is checked against that screen. Rules of thumb used here: contrast of at least 4.5:1 (from the WCAG guidelines), about 1 inch of letter height per 10 feet of viewing distance, about 1 second on screen per word (5 seconds minimum), and no flashing (flashing more than 3 times a second can trigger seizures).</p></div>
+      ${used.map((it) => `<div class="panel"><h2>${esc(it.name)}</h2>${screensFor(it.id).map((s) => `<div class="tablewrap"><table class="acc"><tbody>${accCheck(it, s).map((r) => `<tr><td>${r.ok ? '<span class="pill good">Pass</span>' : '<span class="pill bad">Fail</span>'}</td><td>${r.k}</td><td class="hint">${esc(r.v)}</td></tr>`).join("")}</tbody></table></div>`).join("")}<button class="btn small" data-item="${it.id}" data-goedit="1">Edit slide</button></div>`).join("") || '<p class="hint">No slides are scheduled yet.</p>'}
+      ${unused.length ? `<p class="hint">Not scheduled anywhere (not checked): ${unused.map((i) => esc(i.name)).join(", ")}</p>` : ""}`;
+  }
+  function screenView(sid, pv) {
+    const s = scr(sid), p = S.players[sid];
+    const fireOn = pv.fire && S.rules.fire.on && (S.rules.fire.scope === "all" || sid === "lobby");
+    if (fireOn) return `<div class="inner alarm"><b style="font-size:1.6em">FIRE ALARM</b><span>Leave the building by the nearest exit. Do not use elevators. Follow staff directions.</span></div>`;
+    if (!p.online && !p.cache) return `<div class="inner offline"><b>No signal</b><span style="font-size:12px">Player offline</span></div>`;
+    const it = nowItem(sid, pv.day, pv.min);
+    if (!it) return `<div class="inner offline"><span>Nothing scheduled</span></div>`;
+    const cool = pv.cooler === "failed" && S.rules.cooler.on && S.rules.cooler.temp < 47 && S.rules.cooler.mins <= 30;
+    return slideHTML(it, { h: s.orient === "port" ? 1920 : 1080, soldOut: sid === "cafe" && cool && S.rules.cooler.soldout, banner: sid === "cafe" && cool && S.rules.cooler.banner });
+  }
+  function vPreview() {
+    const pv = S.pv, s = scr(pv.screen);
+    const cool = pv.cooler === "failed" && S.rules.cooler.on && S.rules.cooler.temp < 47 && S.rules.cooler.mins <= 30;
+    return `<div><h1>Preview</h1><p class="sub">See any screen at any day and time, and simulate sensor events to test your rules.</p></div>
+      <div class="panel"><div class="row"><label for="pvS">Screen</label><select id="pvS">${SCREENS.map((x) => `<option value="${x.id}" ${x.id === pv.screen ? "selected" : ""}>${x.name}</option>`).join("")}</select>
+        <label for="pvD">Day</label><select id="pvD">${["Weekdays", "Weekends"].map((d) => `<option ${d === pv.day ? "selected" : ""}>${d}</option>`).join("")}</select>
+        <label for="pvT">Time</label><select id="pvT">${TIMES.slice(0, 48).map((t) => `<option value="${t}" ${t === pv.min ? "selected" : ""}>${hm(t)}</option>`).join("")}</select></div>
+        <div class="row"><label for="pvC">Walk-in cooler</label><select id="pvC"><option value="normal" ${pv.cooler === "normal" ? "selected" : ""}>Normal, 38°F</option><option value="failed" ${pv.cooler === "failed" ? "selected" : ""}>Simulate failure: 47°F for 30 minutes</option></select>
+        <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="pvF" ${pv.fire ? "checked" : ""}>Simulate fire alarm</label></div>
+        ${pv.cooler === "failed" ? `<div class="notice ${cool ? "good" : "bad"}">${cool ? `Cooler rule fired.${S.rules.cooler.text ? " Text sent to Victor: \"Walk-in cooler at 47°F for 30 min.\"" : " Nobody was alerted."}${S.rules.cooler.soldout ? " Cold items are marked sold out." : ""}` : "Cooler is at 47°F, but no rule fired. Nobody knows."}</div>` : ""}</div>
+      <div class="screenbox ${s.orient}"><div class="disp">${screenView(pv.screen, pv)}</div></div>
+      <p class="hint">${s.name}: ${S.players[s.id].online ? "player online" : S.players[s.id].cache ? "player offline, playing saved content" : "player offline"}.</p>`;
+  }
+  function vMissions() {
+    const ms = missions();
+    return `<div><h1>Monica's checklist</h1><p class="sub">Each item checks itself as soon as the signs meet it.</p></div>
+      <div class="panel">${ms.map((m, i) => `<div class="mission"><span class="check ${m.ok ? "done" : "todo"}">${m.ok ? "✓" : i + 1}</span><div><b>${m.t}</b><p class="hint">${m.d}</p></div></div>`).join("")}</div>`;
+  }
+  function logHTML(n) { return `<div class="log">${S.log.slice(0, n).map((l) => `<div><time>${l.t}</time><span>${esc(l.m)}</span></div>`).join("")}</div>`; }
+  function vLog() { return `<div><h1>Activity log</h1><p class="sub">Every change, newest first, so you can see who published what.</p></div><div class="panel">${logHTML(300)}</div>`; }
+  function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).toUpperCase().padStart(7, "0"); }
+  function reportText() {
+    const ms = missions();
+    const body = [
+      "Smart Sign Studio report (Harbor View Hospital)",
+      `Designer: ${S.student || "(name not entered)"}`,
+      `Generated: ${new Date().toLocaleString()}`,
+      `Checklist: ${ms.filter((m) => m.ok).length} of ${ms.length} complete`,
+      ...ms.map((m) => `  [${m.ok ? "x" : " "}] ${m.t}`),
+      "", "Slides:", ...S.items.map((i) => `  ${i.name} (${TPL[i.tpl]}): ${i.font}px, ${i.dur}s, ${i.anim}, contrast ${contrast(i.fg, i.bg).toFixed(1)}:1, ${words(i)} words; on ${screensFor(i.id).map((s) => s.name).join(", ") || "no screen"}; ${passes(i) ? "passes" : "FAILS"} accessibility`),
+      "", "Schedules:", ...SCREENS.map((s) => `  ${s.name}: default ${(item(S.sched[s.id].def) || {}).name || "(nothing)"}; ${S.sched[s.id].slots.map((sl) => `${sl.days} ${hm(sl.from)}-${hm(sl.to)} ${(item(sl.item) || {}).name}`).join("; ") || "no slots"}`),
+      "", `Players: ${SCREENS.map((s) => `${s.id} ${S.players[s.id].online ? "online" : "OFFLINE"}${S.players[s.id].cache ? " +cache" : ""}`).join("; ")}`,
+      `Rules: cooler ${S.rules.cooler.on ? `on >${S.rules.cooler.temp}F ${S.rules.cooler.mins}min${S.rules.cooler.text ? " text" : ""}${S.rules.cooler.soldout ? " soldout" : ""}${S.rules.cooler.banner ? " banner" : ""}` : "off"}; fire ${S.rules.fire.on ? S.rules.fire.scope : "off"}; busy ${S.rules.busy.on ? ">" + S.rules.busy.count : "off"}`,
+      `Kiosk controls: ${S.kiosk}; analytics camera: ${S.analytics}`,
+      `Users: ${S.users.map((u) => `${u.name} ${u.role} [${u.screens.join(",")}]`).join("; ")}`,
+      "", `Changes logged: ${S.log.length}`,
+    ].join("\n");
+    return body + `\nVerification code: ${hash((S.student || "") + "|" + body.replace(/Generated: .*\n/, ""))}`;
+  }
+  function vReport() {
+    return `<div><h1>Submit report</h1><p class="sub">Enter your name, then copy this report into your Solve It submission. Add screenshots of your three screens from the Preview page.</p></div>
+      <div class="panel"><div class="row"><label for="stuName">Your name</label><input type="text" id="stuName" value="${esc(S.student)}" placeholder="First and last name"><button class="btn primary" id="saveName">Save name</button></div></div>
+      <div class="panel"><div class="row" style="justify-content:space-between"><h2>Signage report</h2><button class="btn" id="copyRep">Copy report</button></div>
+      <div class="tablewrap" style="border:none"><pre class="mono" id="repText" style="margin:0;white-space:pre-wrap;font-size:13px">${esc(reportText())}</pre></div></div>`;
+  }
+  function render() {
+    renderNav();
+    const v = { home: vHome, screens: vScreens, content: vContent, sched: vSched, sensors: vSensors, acc: vAcc, preview: vPreview, missions: vMissions, log: vLog, report: vReport }[S.view] || vHome;
+    $("#work").innerHTML = v();
+    save();
+  }
+  const radio = (n) => (document.querySelector(`input[name="${n}"]:checked`) || {}).value;
+  const num = (id) => parseInt($(id).value, 10);
+
+  // ---------- Events ----------
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button"); if (!t || t.disabled) return;
+    if (t.dataset.view) { S.view = t.dataset.view; render(); return; }
+    if (t.dataset.item) { S.selItem = t.dataset.item; if (t.dataset.goedit) S.view = "content"; render(); return; }
+    if (t.dataset.reboot) { S.players[t.dataset.reboot].online = true; log(`Rebooted the ${scr(t.dataset.reboot).name} player remotely. It finished the update and checked in.`); render(); toast("Player is back online."); return; }
+    if (t.dataset.saveuser) { const u = S.users.find((x) => x.id === t.dataset.saveuser); u.role = $("#role-" + u.id).value; u.screens = [...document.querySelectorAll(".us-" + u.id + ":checked")].map((x) => x.value); log(`${u.name}: ${u.role} for ${u.screens.join(", ") || "no screens"}.`); render(); toast("Permissions saved."); return; }
+    if (t.dataset.addslot) { const sid = t.dataset.addslot, it = $("#si-" + sid).value, f = num("#sf-" + sid), to = num("#st-" + sid), days = $("#sd-" + sid).value;
+      if (!it) { toast("Pick a slide for the slot."); return; } if (f >= to) { toast("The end time must be after the start time."); return; }
+      S.sched[sid].slots.push({ id: "sl" + Date.now().toString(36), days, from: f, to, item: it }); log(`${scr(sid).name}: ${item(it).name}, ${days} ${hm(f)} to ${hm(to)}.`); render(); return; }
+    if (t.dataset.delslot) { const [sid, id] = t.dataset.delslot.split(":"); S.sched[sid].slots = S.sched[sid].slots.filter((x) => x.id !== id); log(`${scr(sid).name}: removed a time slot.`); render(); return; }
+    switch (t.id) {
+      case "resetBtn": $("#layer").innerHTML = `<div class="overlay"><div class="dialog" role="dialog" aria-modal="true"><h2>Reset the simulator?</h2><p>This erases your slides, schedules and log.</p><div class="row" style="justify-content:flex-end"><button class="btn" id="rsCancel">Keep my work</button><button class="btn danger" id="rsGo">Reset</button></div></div></div>`; break;
+      case "rsCancel": $("#layer").innerHTML = ""; break;
+      case "rsGo": S = seed(); $("#layer").innerHTML = ""; render(); toast("Simulator reset."); break;
+      case "addItem": { const n = $("#newName").value.trim(), tpl = $("#newTpl").value; if (!n) { toast("Name the slide."); return; }
+        const fields = { menu: { title: n, lines: "" }, way: { title: "Find your way", lines: "" }, wait: { title: "Emergency Department wait", source: "Typed in by front desk staff", note: "Patients are seen by how sick they are, not arrival order." }, msg: { title: n, body: "" } }[tpl];
+        const id = "it" + Date.now().toString(36); S.items.push({ id, name: n, tpl, fields, font: 40, fg: "#111111", bg: "#ffffff", dur: 8, anim: "None" }); S.selItem = id; log(`Created ${TPL[tpl].toLowerCase()} slide "${n}".`); render(); break; }
+      case "saveItem": { const it = item(S.selItem), f = it.fields;
+        f.title = $("#fTitle").value; if ($("#fLines")) f.lines = $("#fLines").value; if ($("#fBody")) f.body = $("#fBody").value; if ($("#fSource")) f.source = $("#fSource").value; if ($("#fNote")) f.note = $("#fNote").value;
+        it.font = num("#fFont") || it.font; it.dur = num("#fDur") || it.dur; it.anim = $("#fAnim").value; it.fg = radio("fg") || it.fg; it.bg = radio("bg") || it.bg;
+        log(`Saved slide "${it.name}" (${it.font}px, ${it.dur}s, ${it.anim}, contrast ${contrast(it.fg, it.bg).toFixed(1)}:1).`); render(); toast("Slide saved."); break; }
+      case "delItem": { const it = item(S.selItem); S.items = S.items.filter((x) => x !== it); SCREENS.forEach((s) => { const sc = S.sched[s.id]; if (sc.def === it.id) sc.def = ""; sc.slots = sc.slots.filter((x) => x.item !== it.id); }); S.selItem = (S.items[0] || {}).id; log(`Deleted slide "${it.name}".`); render(); break; }
+      case "saveCooler": Object.assign(S.rules.cooler, { on: $("#rcOn").checked, temp: num("#rcTemp"), mins: num("#rcMins"), text: $("#rcText").checked, soldout: $("#rcSold").checked, banner: $("#rcBanner").checked }); log(`Cooler rule ${S.rules.cooler.on ? `on: above ${S.rules.cooler.temp}°F for ${S.rules.cooler.mins} min` : "off"}.`); render(); toast("Cooler rule saved."); break;
+      case "saveFire": Object.assign(S.rules.fire, { on: $("#rfOn").checked, scope: $("#rfScope").value }); log(`Fire alarm rule ${S.rules.fire.on ? "on, " + (S.rules.fire.scope === "all" ? "every screen" : "lobby only") : "off"}.`); render(); toast("Fire rule saved."); break;
+      case "saveBusy": Object.assign(S.rules.busy, { on: $("#rbOn").checked, count: num("#rbCount") }); log(`Café busy rule ${S.rules.busy.on ? "on" : "off"}.`); render(); break;
+      case "saveName": S.student = $("#stuName").value.trim(); log(`Designer name set to "${S.student}".`); render(); toast("Name saved."); break;
+      case "copyRep": { const txt = $("#repText").textContent; const fb = () => { const r = document.createRange(); r.selectNodeContents($("#repText")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Report selected. Press Ctrl + C (or Cmd + C) to copy."); };
+        try { navigator.clipboard.writeText(txt).then(() => toast("Report copied."), fb); } catch (err) { fb(); } break; }
+    }
+  });
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.dataset.cache) { S.players[t.dataset.cache].cache = t.checked; log(`${scr(t.dataset.cache).name}: offline playback ${t.checked ? "on" : "off"}.`); render(); }
+    else if (t.dataset.def != null && t.dataset.def) { S.sched[t.dataset.def].def = t.value; log(`${scr(t.dataset.def).name}: default slide set to ${(item(t.value) || {}).name || "(nothing)"}.`); render(); }
+    else if (t.id === "kiosk") { S.kiosk = t.value; log(`Kiosk touch controls: ${t.value}.`); render(); }
+    else if (t.id === "analytics") { S.analytics = t.value; log(`Audience analytics camera: ${t.value}.`); render(); }
+    else if (["pvS", "pvD", "pvT", "pvC", "pvF"].includes(t.id)) {
+      S.pv = { screen: $("#pvS").value, day: $("#pvD").value, min: num("#pvT"), cooler: $("#pvC").value, fire: $("#pvF").checked };
+      const c = S.rules.cooler;
+      if (S.pv.cooler === "failed" && c.on && c.temp <= 41 && c.mins <= 30 && c.soldout && c.text) { if (!S.flags.testedCooler) log("Tested the cooler rule with a simulated failure: Victor was texted and cold items were marked sold out."); S.flags.testedCooler = true; }
+      if (S.pv.fire) log(`Simulated a fire alarm while previewing ${scr(S.pv.screen).name}.`);
+      render();
+    }
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("#layer .overlay")) $("#layer").innerHTML = ""; });
+  render();
+})();
+</script>
+
+</body>
+</html>

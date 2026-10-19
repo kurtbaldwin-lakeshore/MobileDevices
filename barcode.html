@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Barcode and Inventory Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a console shell. Left rail of sections, top context bar (org unit + licenses), work area on the right. Collapses to a top tab strip on phones. */
+:root {
+  --bg: #f3f6f6; --panel: #ffffff; --ink: #172327; --muted: #5b6b70; --line: #d6e1df;
+  --accent: #0e7c7b; --accent-ink: #ffffff; --accent-soft: #e2f1f0; --amber: #e8a33d; --amber-soft: #fbefdb;
+  --good: #2e7d4f; --good-soft: #e3f3e8; --warn: #9a6200; --warn-soft: #fff3d6; --bad: #b5482f; --bad-soft: #f9e3dd;
+  --rail: #12343b; --rail-ink: #e8f1f0; --rail-muted: #9fb7b5;
+  --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1a1d; --panel: #16252a; --ink: #e4eeec; --muted: #9db0b2; --line: #28403f;
+  --accent: #3fb3ae; --accent-ink: #062022; --accent-soft: #163c3c; --amber: #f0b35a; --amber-soft: #3a2d17;
+  --good: #6fcf97; --good-soft: #17352a; --warn: #f2c46b; --warn-soft: #3a3016; --bad: #f08a72; --bad-soft: #3d1f19;
+  --rail: #0a1416; --rail-ink: #e4eeec; --rail-muted: #8aa3a2; color-scheme: dark }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.45; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.mono { font-family: var(--font-mono); font-size: 0.9em; }
+.shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100%; }
+.rail { background: var(--rail); color: var(--rail-ink); padding-block: 18px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; display: flex; flex-direction: column; gap: 18px; }
+.brand { display: grid; gap: 2px; }
+.brand b { font-size: 17px; letter-spacing: 0.01em; }
+.brand span { color: var(--rail-muted); font-size: 12px; }
+.nav { display: grid; gap: 2px; }
+.nav button { all: unset; cursor: pointer; padding: 8px 10px; border-radius: 6px; color: var(--rail-ink); display: flex; justify-content: space-between; gap: 8px; }
+.nav button:hover { background: rgba(255,255,255,0.07); }
+.nav button[aria-current="page"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.nav button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.nav .count { font-family: var(--font-mono); font-size: 12px; opacity: 0.85; }
+.rail-foot { margin-top: auto; color: var(--rail-muted); font-size: 12px; display: grid; gap: 8px; }
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding-block: 12px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--panel); border-bottom: 1px solid var(--line); }
+.topbar .ctx { color: var(--muted); font-size: 13px; }
+.topbar .ctx b { color: var(--ink); }
+.lic { margin-left: auto; display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+.meter { width: 120px; height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.work { padding-block: 20px 40px; padding-left: 20px; padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; align-content: start; }
+h1 { font-size: 24px; margin: 0; text-wrap: balance; }
+h2 { font-size: 17px; margin: 0; }
+p { margin: 0; }
+.sub { color: var(--muted); max-width: 70ch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 4px; }
+.tile .n { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile .l { color: var(--muted); font-size: 13px; }
+.btn { cursor: pointer; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 12px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.small { padding: 3px 8px; font-size: 13px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+input[type=text], select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+textarea { width: 100%; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tree { display: grid; gap: 2px; }
+.tree button { all: unset; cursor: pointer; padding: 5px 8px; border-radius: 6px; display: flex; gap: 6px; align-items: center; }
+.tree button:hover { background: var(--accent-soft); }
+.tree button[aria-selected="true"] { background: var(--accent-soft); font-weight: 700; box-shadow: inset 3px 0 0 var(--accent); }
+.tree button:focus-visible { outline: 2px solid var(--amber); }
+.tree .twig { color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: pre; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--accent-soft); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: none; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.mute { background: var(--line); color: var(--muted); }
+.policy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 300px); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.policy:last-child { border-bottom: none; }
+.policy .help { color: var(--muted); font-size: 13px; }
+.src { font-size: 12px; color: var(--muted); }
+.src.local { color: var(--accent); font-weight: 700; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { all: unset; cursor: pointer; padding: 8px 12px; border-bottom: 3px solid transparent; }
+.tabs button[aria-selected="true"] { border-color: var(--accent); font-weight: 700; }
+.tabs button:focus-visible { outline: 2px solid var(--amber); }
+.mission { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.mission:last-child { border-bottom: none; }
+.check { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.check.done { background: var(--good); color: var(--panel); }
+.check.todo { border: 2px solid var(--line); color: var(--muted); }
+.hint { color: var(--muted); font-size: 13px; }
+.ticket { background: var(--amber-soft); border: 1px solid var(--amber); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 4px; }
+.ticket b { color: var(--ink); }
+.log { display: grid; gap: 0; }
+.log div { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.log time { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.notice { border-radius: var(--r); padding: 10px 12px; font-size: 14px; }
+.notice.bad { background: var(--bad-soft); color: var(--bad); }
+.notice.good { background: var(--good-soft); color: var(--good); }
+.notice.info { background: var(--accent-soft); color: var(--ink); }
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--rail); color: var(--rail-ink); padding: 10px 14px; border-radius: var(--r); box-shadow: 0 6px 24px rgba(0,0,0,0.25); max-width: min(360px, calc(100vw - 32px)); }
+/* Chromebook preview */
+.laptop { width: 100%; max-width: 640px; }
+.screen { aspect-ratio: 16 / 10; max-width: 100%; border: 10px solid #1e2427; border-radius: 12px 12px 4px 4px; position: relative; overflow: hidden; background: #24343a; color: #fff; }
+.base { height: 14px; background: #2c3438; border-radius: 0 0 14px 14px; margin: 0 -4%; }
+.wall-school { background: radial-gradient(circle at 30% 30%, #1b8f8c, #0b3d42 70%); }
+.wall-free { background: repeating-linear-gradient(45deg, #b04ad1 0 24px, #ff8a00 24px 48px, #2ec4ff 48px 72px); }
+.desk { position: absolute; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 12px; gap: 8px; }
+.wall-label { font-size: 13px; background: rgba(0,0,0,0.35); padding: 4px 8px; border-radius: 6px; justify-self: start; }
+.browser { background: #fff; color: #172327; border-radius: 8px; align-self: center; justify-self: center; width: min(88%, 460px); padding: 10px; display: grid; gap: 8px; font-size: 13px; }
+.browser .bar { display: flex; gap: 6px; }
+.browser input { flex: 1; background: #eef3f3; border: 1px solid #c9d6d4; color: #172327; }
+.shelf { justify-self: center; display: flex; gap: 6px; background: rgba(0,0,0,0.45); padding: 6px 10px; border-radius: 99px; flex-wrap: wrap; justify-content: center; }
+.shelf span { background: rgba(255,255,255,0.9); color: #172327; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+.lock { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px; padding: 20px; background: #0d1416; }
+.lock .msg { max-width: 40ch; font-size: 15px; }
+.kiosk { position: absolute; inset: 0; background: #f4f7fb; color: #172327; display: grid; place-content: center; text-align: center; gap: 8px; padding: 16px; }
+.signin { position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; text-align: center; background: #20323a; }
+.signin .card { background: #fff; color: #172327; border-radius: 10px; padding: 16px 20px; display: grid; gap: 8px; min-width: 220px; }
+.overlay { position: fixed; inset: 0; background: rgba(8,16,18,0.55); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.dialog { background: var(--panel); border-radius: 12px; border: 1px solid var(--line); width: min(540px, 100%); max-height: 90vh; overflow: auto; padding: 18px; display: grid; gap: 12px; }
+.disclaimer { font-size: 12px; color: var(--muted); }
+@media (max-width: 760px) {
+  .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .rail { padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 10px; }
+  .nav { grid-auto-flow: column; overflow-x: auto; }
+  .nav button { white-space: nowrap; }
+  .rail-foot { display: none; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .policy { grid-template-columns: minmax(0, 1fr); }
+  .lic { margin-left: 0; }
+  .topbar, .work { padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+}
+@media (prefers-reduced-motion: no-preference) { .nav button, .btn, .tree button { transition: background 0.15s, border-color 0.15s; } }
+</style>
+<style>
+/* Barcode lab additions */
+body { margin: 0; }
+.stepper { display: grid; gap: 12px; align-content: start; }
+.bc { background: #fff; border-radius: 6px; padding: 8px; display: inline-grid; justify-items: center; gap: 2px; color: #111; }
+.bc { max-width: 100%; }
+.bc svg { display: block; max-width: 100%; height: auto; }
+.bc .hr { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.08em; color: #111; }
+.prodgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.prod { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 6px; background: var(--panel); align-content: start; }
+.prod b { font-size: 15px; }
+.prod .qty { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.box { background: #c9a46a; color: #2b1d08; border-radius: 10px; padding: 14px; display: grid; gap: 6px; border: 3px dashed #8a6a35; }
+.slip { background: #fffdf5; color: #222; border: 1px solid #d8d0b8; border-radius: 6px; padding: 12px; font-family: var(--font-mono); font-size: 13px; display: grid; gap: 2px; }
+.steps { font-family: var(--font-mono); font-size: 14px; display: grid; gap: 2px; }
+.case { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: 14px; background: var(--panel); }
+.case .pic { display: grid; place-items: center; background: var(--bg); border-radius: 8px; padding: 10px; min-height: 140px; }
+.case label { display: grid; grid-template-columns: auto 1fr; gap: 6px; font-size: 14px; }
+.lbl { background: #fff; color: #111; border: 1px solid #bbb; border-radius: 4px; padding: 8px 10px; display: grid; gap: 4px; justify-items: center; width: 280px; max-width: 100%; }
+input[type=number] { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; width: 90px; }
+@media (max-width: 760px) { .case { grid-template-columns: minmax(0, 1fr); } }
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <a href="index.html" class="hub-back" style="color:var(--rail-ink);font-size:13px;text-decoration:underline;text-underline-offset:3px">&larr; All simulators</a><div class="brand"><b>Barcode Lab</b><span>Miller's Hardware · training</span></div>
+    <nav class="nav" id="nav" aria-label="Sections"></nav>
+    <div class="rail-foot">
+      <span>Barcode and Inventory Lab for 10-150-164 Mobile Devices. A practice tool modeled on store inventory and label software; not a vendor product. Miller's Hardware, its supplier and its items are fictional, and the UPCs use a number range set aside for in-store use, so they won't match real products.</span>
+      <button class="btn small" id="resetBtn" style="color:var(--rail-ink);background:transparent;border-color:var(--rail-muted)">Reset simulator</button>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="ctx">Store <b>Miller's Hardware</b></div>
+      <div class="ctx">Clerk <b id="whoName"></b></div>
+      <div class="ctx" id="scanCtx"></div>
+      <div class="lic" id="lic"></div>
+    </header>
+    <main class="work" id="work"></main>
+  </div>
+</div>
+<div id="layer"></div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // ---------- Barcode math ----------
+  function checkDigit(d11) { const d = d11.split("").map(Number); let odd = 0, even = 0; d.forEach((x, i) => { if (i % 2 === 0) odd += x; else even += x; }); return (10 - ((odd * 3 + even) % 10)) % 10; }
+  const upc = (prefix6, item5) => { const b = prefix6 + item5; return b + checkDigit(b); };
+  const validUPC = (s) => /^\d{12}$/.test(s) && checkDigit(s.slice(0, 11)) === Number(s[11]);
+  function upcModules(code) {
+    const L = ["0001101", "0011001", "0010011", "0111101", "0100011", "0110001", "0101111", "0111011", "0110111", "0001011"];
+    const R = L.map((s) => s.split("").map((b) => (b === "1" ? "0" : "1")).join(""));
+    const d = code.split("").map(Number);
+    return "101" + d.slice(0, 6).map((x) => L[x]).join("") + "01010" + d.slice(6).map((x) => R[x]).join("") + "101";
+  }
+  const C128 = "11011001100110011011001100110011010010011000100100011001000100110010011001000100110001001000110010011001001000110010001001100010010010110011100100110111001001100111010111001100100111011001001110011011001110010110010111001100100111011011100100110011101001110110111011101001100111001011001110010011011101100100111001101001110011001011011011000110110001101100011011010100011000100010110001000100011010110001000100011010001000110001011010001000110001010001100010001010110111000101100011101000110111010111011000101110001101000111011011101110110110100011101100010111011011101000110111000101101110111011101011000111010001101110001011011101101000111011000101110001101011101111010110010000101111000101010100110000101000011001001011000010010000110100001011001000010011010110010000101100001001001101000010011000010100001101001000011001011000010010110010100001111011101011000010100100011110101010011110010010111100100100111101011110010010011110100100111100101111010010011110010100111100100101101101111011011110110111101101101010111100010100011110100010111101011110100010111100010111101010001111010001010111011110101111011101110101111011110101110110100001001101001000011010011100";
+  const c128 = (i) => C128.slice(i * 11, i * 11 + 11);
+  function code128Modules(text) {
+    const vals = text.split("").map((ch) => ch.charCodeAt(0) - 32);
+    let sum = 104; vals.forEach((v, i) => { sum += v * (i + 1); });
+    return c128(104) + vals.map(c128).join("") + c128(sum % 103) + "1100011101011";
+  }
+  // o: {mod, h, quiet, color, opacity}
+  function barsSVG(mods, o) {
+    const m = o.mod || 2, q = o.quiet == null ? 10 : o.quiet, h = o.h || 60, w = (mods.length + q * 2) * m;
+    let x = q * m, out = "";
+    const guard = o.guards || [];
+    for (let i = 0; i < mods.length; i++) { if (mods[i] === "1") { const long = guard.includes(i); out += `<rect x="${x}" y="0" width="${m}" height="${long ? h + 8 : h}" fill="${o.color || "#111"}"/>`; } x += m; }
+    return `<svg width="${w}" height="${h + 8}" viewBox="0 0 ${w} ${h + 8}" role="img" aria-label="${esc(o.label || "barcode")}" style="background:#fff;opacity:${o.opacity || 1}">${out}${o.scratch ? `<line x1="0" y1="${h * 0.3}" x2="${w}" y2="${h * 0.7}" stroke="#fff" stroke-width="4"/><line x1="${w * 0.2}" y1="0" x2="${w * 0.6}" y2="${h}" stroke="#fff" stroke-width="3"/>` : ""}</svg>`;
+  }
+  function upcGuards() { const g = [0, 1, 2]; for (let i = 45; i < 50; i++) g.push(i); g.push(92, 93, 94); return g; }
+  function upcSVG(code, o = {}) { return `<div class="bc">${barsSVG(upcModules(code), Object.assign({ guards: upcGuards(), label: "UPC-A " + code }, o))}<span class="hr">${code[0]} ${code.slice(1, 6)} ${code.slice(6, 11)} ${code[11]}</span></div>`; }
+  function c128SVG(text, o = {}) { return `<div class="bc">${barsSVG(code128Modules(text), Object.assign({ label: "Code 128 " + text, mod: 1.6 }, o))}${o.noText ? "" : `<span class="hr">${esc(text)}</span>`}</div>`; }
+  function qrSVG() { // decorative QR-style square (2D)
+    let cells = ""; const n = 21, s = 4; let seed = 7;
+    const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    const finder = (x, y) => (x < 7 && y < 7) || (x >= n - 7 && y < 7) || (x < 7 && y >= n - 7);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      let on;
+      if (finder(x, y)) { const fx = x >= n - 7 ? x - (n - 7) : x, fy = y >= n - 7 ? y - (n - 7) : y; on = fx === 0 || fy === 0 || fx === 6 || fy === 6 || (fx >= 2 && fx <= 4 && fy >= 2 && fy <= 4); }
+      else on = rnd() > 0.5;
+      if (on) cells += `<rect x="${(x + 4) * s}" y="${(y + 4) * s}" width="${s}" height="${s}" fill="#111"/>`;
+    }
+    return `<div class="bc"><svg width="${(n + 8) * s}" height="${(n + 8) * s}" role="img" aria-label="QR code" style="background:#fff">${cells}</svg></div>`;
+  }
+
+  // ---------- Store data ----------
+  const PREFIX = "412345";
+  const ITEMS = [
+    { sku: "SCR-DECK-2IN", name: "2-inch deck screws, 1 lb box", upc: upc(PREFIX, "00101"), loc: "Aisle 7, bay 2", start: 40, actual: 8, daily: 6, lead: 5, safety: 10, par: 80, reason: "receiving" },
+    { sku: "NAIL-FRM-16D", name: "16d framing nails, 5 lb box", upc: upc(PREFIX, "00102"), loc: "Aisle 7, bay 3", start: 22, actual: 22, daily: 2, lead: 5, safety: 4, par: 30 },
+    { sku: "BLT-HEX-38", name: "3/8-inch hex bolts, loose (each)", upc: "", loc: "Aisle 7, bin 12", start: 150, actual: 138, daily: 20, lead: 7, safety: 40, par: 400, reason: "shrink" },
+    { sku: "TAPE-DUCT", name: "Duct tape, 2 in × 60 yd", upc: upc(PREFIX, "00104"), loc: "Aisle 7, bay 5", start: 30, actual: 30, daily: 3, lead: 4, safety: 6, par: 40 },
+    { sku: "ANCH-DRY", name: "Drywall anchors, 20-pack", upc: upc(PREFIX, "00105"), loc: "Aisle 7, bay 6", start: 18, actual: 21, daily: 2, lead: 6, safety: 3, par: 30, reason: "return" },
+    { sku: "GLV-WORK", name: "Work gloves, large", upc: upc(PREFIX, "00106"), loc: "Aisle 7, bay 8", start: 12, actual: 12, daily: 1, lead: 10, safety: 3, par: 24 },
+  ];
+  const item = (sku) => ITEMS.find((i) => i.sku === sku);
+  const SLIP = [["SCR-DECK-2IN", 32], ["NAIL-FRM-16D", 10], ["TAPE-DUCT", 24], ["GLV-WORK", 12]];
+  const BOX = { "SCR-DECK-2IN": 32, "NAIL-FRM-16D": 10, "TAPE-DUCT": 20, "GLV-WORK": 12 };
+  const REASONS = [["receiving", "Receiving error (a delivery keyed in wrong)"], ["return", "Unrecorded return"], ["shrink", "Shrink (theft, loss or damage)"], ["miscount", "Miscount during the last count"]];
+  const GLUE_ITEM = "00207", GLUE = upc(PREFIX, GLUE_ITEM);
+  const typo = (() => { const g = item("NAIL-FRM-16D").upc; return g.slice(0, 8) + ((Number(g[8]) + 3) % 10) + g.slice(9); })();
+  const INVOICE = [["SCR-DECK-2IN", item("SCR-DECK-2IN").upc, true], ["NAIL-FRM-16D", typo, false], ["TAPE-DUCT", item("TAPE-DUCT").upc, true]];
+  const PROG = [
+    ["mode", "HID", "USB keyboard (HID) mode", "PRG-USBKBD"], ["mode", "COM", "USB serial (COM) mode", "PRG-USBCOM"],
+    ["suffix", "Enter", "Add Enter suffix", "PRG-SFX-CR"], ["suffix", "Tab", "Add Tab suffix", "PRG-SFX-TAB"], ["suffix", "None", "No suffix", "PRG-SFX-NONE"],
+    ["c128", true, "Enable Code 128", "PRG-C128-ON"], ["c128", false, "Disable Code 128", "PRG-C128-OFF"],
+  ];
+  const CASES = [
+    { id: "t1", title: "Shelf label for drywall anchors", say: "The barcode was printed right up to the edge of the label so the text would fit.", cause: "quiet", fix: "margins", pic: () => `<div class="bc" style="padding:0">${barsSVG(upcModules(item("ANCH-DRY").upc), { quiet: 0, guards: upcGuards(), label: "Barcode with no blank margins" })}</div>` },
+    { id: "t2", title: "Holiday sale tag", say: "Marketing printed the barcode in red ink to match the sale colors. The counter scanner uses red light.", cause: "contrast", fix: "black", pic: () => upcSVG(item("TAPE-DUCT").upc, { color: "#e23b3b" }) },
+    { id: "t3", title: "Tiny label on a small package", say: "Someone shrank the barcode to fit a tiny sticker.", cause: "small", fix: "size", pic: () => upcSVG(item("GLV-WORK").upc, { mod: 0.7, h: 22 }) },
+    { id: "t4", title: "Shelf label by the front window", say: "This label was printed on direct thermal paper last spring. It sat in the sun all summer.", cause: "faded", fix: "transfer", pic: () => upcSVG(item("NAIL-FRM-16D").upc, { opacity: 0.28, scratch: true }) },
+    { id: "t5", title: "Contractor loyalty code", say: "A contractor shows a QR code on his phone, and the counter scanner won't beep at all. Regular UPCs scan fine.", cause: "type", fix: "imager", pic: () => qrSVG() },
+  ];
+  const CAUSES = [["quiet", "No quiet zone (blank margin) around the bars"], ["contrast", "Low contrast: the scanner can't see red bars"], ["small", "Printed too small for the scanner to resolve"], ["faded", "Faded and scratched: direct thermal paper darkens and fades with heat and sunlight"], ["type", "The scanner can't read that kind of barcode"], ["suffix", "Wrong suffix setting"]];
+  const FIXES = [["margins", "Reprint with blank margins on both sides"], ["black", "Reprint with black bars on a white background"], ["size", "Reprint at a larger size (don't shrink below the minimum)"], ["transfer", "Reprint with thermal transfer on long-life labels"], ["imager", "Use a 2D imager scanner, which reads QR codes and phone screens"], ["clean", "Clean the scanner window"]];
+
+  function seed() {
+    const sys = {}, act = {}, rop = {}; ITEMS.forEach((i) => { sys[i.sku] = i.start; act[i.sku] = i.actual; rop[i.sku] = 0; });
+    return { v: 1, student: "", sys, act, rop,
+      scanner: { mode: "COM", suffix: "None", c128: false }, scanBuf: "",
+      glue: { item: "", check: "", tries: 0, ok: false }, invoice: {},
+      count: {}, countCur: "", reasons: {}, countPosted: false,
+      rcvLines: {}, rcvCur: "", receipts: [], shortageReported: false,
+      reorder: null,
+      printer: { size: "4 × 6 in (shipping)", dpi: "203", method: "Direct thermal", ribbon: "None", media: "Gap (die-cut labels)", calibrated: false, symb: "UPC-A", hr: false },
+      binLabel: null, binTested: false, trouble: {}, view: "home",
+      log: [{ t: stamp(), m: "Simulator started. The new scanner came out of the box set to serial mode with no suffix." }] };
+  }
+  function stamp() { return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  const KEY = "md-barcode-sim-v1";
+  let S;
+  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+  if (!S || S.v !== 1) S = seed();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage blocked: keep working in memory */ } }
+  function log(m) { S.log.unshift({ t: stamp(), m }); if (S.log.length > 300) S.log.length = 300; }
+  let toastTimer;
+  function toast(m) { const l = $("#layer"); const o = l.querySelector(".toast"); if (o) o.remove(); const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); t.textContent = m; l.appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 3600); }
+
+  const ropFormula = (i) => i.daily * i.lead + i.safety;
+  const lowItems = () => ITEMS.filter((i) => S.sys[i.sku] <= S.rop[i.sku]);
+  const printerReady = () => { const p = S.printer; return p.size.startsWith("2 × 1") && p.method === "Thermal transfer" && ["Wax-resin", "Resin"].includes(p.ribbon) && p.media.startsWith("Gap") && p.calibrated; };
+  const rcvOK = () => S.receipts.length > 0 && SLIP.every(([sku]) => S.receipts.reduce((a, r) => a + (r[sku] || 0), 0) === BOX[sku]);
+
+  // ---------- Missions ----------
+  function missions() {
+    const sc = S.scanner;
+    const varItems = ITEMS.filter((i) => i.reason);
+    return [
+      { t: "Set up the new scanner with programming barcodes", d: "USB keyboard (HID) mode so scans type into the screen, an Enter suffix so each scan submits, and Code 128 turned on for the store's own bin labels.", ok: sc.mode === "HID" && sc.suffix === "Enter" && sc.c128 },
+      { t: "Create the UPC for Miller's house-brand wood glue", d: `Company prefix ${PREFIX}, item number ${GLUE_ITEM}. Work out the check digit yourself.`, ok: S.glue.ok },
+      { t: "Catch the typo on the supplier's invoice", d: "Check each UPC on the invoice and mark the one that can't be right.", ok: INVOICE.every(([sku, , good]) => S.invoice[sku] === (good ? "valid" : "typo")) },
+      { t: "Cycle count aisle 7", d: "Scan each item and enter what's actually on the shelf.", ok: ITEMS.every((i) => S.count[i.sku] === S.act[i.sku] || (S.countPosted && S.count[i.sku] != null)) && ITEMS.every((i) => S.count[i.sku] != null) },
+      { t: "Explain every difference and post the corrected counts", d: "Use the store notes to choose a reason for each item where the shelf doesn't match the system.", ok: S.countPosted && varItems.every((i) => S.reasons[i.sku] === i.reason) },
+      { t: "Receive Tuesday's delivery by what's in the box", d: "Scan each item in the box and enter the quantity you actually count, not what the packing slip says.", ok: rcvOK() },
+      { t: "Report the short shipment to the supplier", d: "Something on the packing slip didn't arrive.", ok: rcvOK() && S.shortageReported },
+      { t: "Set a reorder point for every item", d: "Reorder point = daily sales × lead time (days) + safety stock.", ok: ITEMS.every((i) => S.rop[i.sku] === ropFormula(i)) },
+      { t: "Create the reorder list", d: "After the count and the delivery are posted, list every item at or below its reorder point, ordering enough to get back to par.", ok: !!S.reorder && S.countPosted && rcvOK() && ITEMS.every((i) => S.rop[i.sku] === ropFormula(i)) && S.reorder.map((r) => r.sku).sort().join() === lowItems().map((i) => i.sku).sort().join() && S.reorder.every((r) => r.qty === item(r.sku).par - S.sys[r.sku]) },
+      { t: "Set up the label printer for long-lasting shelf labels", d: "2 × 1 inch labels, thermal transfer with a ribbon that lasts, the right media type, and calibrated after loading the new roll.", ok: printerReady() },
+      { t: "Print and test a bin label for the loose hex bolts", d: "The bolts have no UPC. Print the store's SKU in a barcode type that holds letters, with readable text under it, then scan it to prove it works.", ok: !!(S.binLabel && S.binLabel.symb === "Code 128" && S.binLabel.hr && S.binTested) },
+      { t: "Diagnose the five barcodes that won't scan", d: "Pick the cause and the fix for each one.", ok: CASES.every((c) => S.trouble[c.id] && S.trouble[c.id].cause === c.cause && S.trouble[c.id].fix === c.fix) },
+    ];
+  }
+
+  // ---------- Scanner simulation ----------
+  function simScan(code, symb) {
+    const sc = S.scanner;
+    if (symb === "Code 128" && !sc.c128) { toast("No beep. The scanner ignored it: Code 128 is turned off."); log(`Scan of ${code} ignored (Code 128 disabled).`); save(); return; }
+    if (symb === "QR") { toast("No beep. This scanner is a linear imager: it reads 1D barcodes only."); return; }
+    if (sc.mode === "COM") { toast("Beep! The scanner read it, but nothing appeared on screen."); log(`Scanned ${code}: beep, but nothing appeared (scanner in serial/COM mode).`); save(); return; }
+    if (sc.suffix !== "Enter") {
+      S.scanBuf += code; const box = $("#scan"); if (box) box.value = S.scanBuf;
+      toast(sc.suffix === "Tab" ? "Beep! The code typed in, then the cursor jumped to the next field instead of submitting." : "Beep! The code typed into the box but didn't submit. Scans will pile up on one line.");
+      log(`Scanned ${code}: typed but not submitted (suffix ${sc.suffix}).`); save(); return;
+    }
+    submit(code, true);
+  }
+  function submit(raw, fromScanner) {
+    const code = String(raw).trim().toUpperCase(); S.scanBuf = "";
+    if (!code) return;
+    const it = ITEMS.find((i) => i.upc === code || i.sku === code);
+    if (S.view === "printer") {
+      if (S.binLabel && code === "BLT-HEX-38") { S.binTested = !!fromScanner; log(fromScanner ? "Test-scanned the new hex bolt bin label: it read BLT-HEX-38." : "Typed BLT-HEX-38 by hand (that doesn't test the label)."); render(); toast(fromScanner ? "Bin label scanned: BLT-HEX-38." : "Typing the SKU doesn't prove the label scans. Use the scanner."); return; }
+    }
+    if (!it) { toast(`Not found: ${code}. Check the label or the item list.`); log(`Scanned ${code}: not in the item list.`); save(); render(); return; }
+    if (S.view === "count") { S.countCur = it.sku; log(`Count: scanned ${it.sku}.`); render(); const q = $("#cntQty"); if (q) q.focus(); return; }
+    if (S.view === "receive") { if (!BOX[it.sku]) { toast(`${it.name} isn't in this delivery.`); return; } S.rcvCur = it.sku; log(`Receiving: scanned ${it.sku}.`); render(); const q = $("#rcvQty"); if (q) q.focus(); return; }
+    toast(`Scanned ${it.sku}: ${it.name}. ${S.sys[it.sku]} on hand in the system.`); log(`Scanned ${it.sku}.`); save();
+  }
+
+  // ---------- Views ----------
+  const NAV = [["home", "Overview"], ["scanner", "Scanner setup"], ["workshop", "Barcode workshop"], ["count", "Aisle 7 count"], ["receive", "Receiving"], ["reorder", "Reorder points"], ["printer", "Label printer"], ["trouble", "Troubleshooting"], ["missions", "Checklist"], ["log", "Activity log"], ["report", "Submit report"]];
+  function renderNav() {
+    const ms = missions(), done = ms.filter((m) => m.ok).length;
+    const counts = { missions: `${done}/${ms.length}`, reorder: lowItems().length ? `${lowItems().length} low` : null };
+    $("#nav").innerHTML = NAV.map(([v, l]) => `<button data-view="${v}" ${S.view === v ? 'aria-current="page"' : ""}><span>${l}</span>${counts[v] != null ? `<span class="count">${counts[v]}</span>` : ""}</button>`).join("");
+    $("#whoName").textContent = S.student || "Student";
+    const sc = S.scanner;
+    $("#scanCtx").innerHTML = `Scanner <b>${sc.mode === "HID" ? "USB keyboard" : "USB serial"}</b> · suffix ${sc.suffix} · Code 128 ${sc.c128 ? "on" : "off"}`;
+    $("#lic").innerHTML = `Checklist ${done} of ${ms.length}<span class="meter"><i style="width:${Math.round((done / ms.length) * 100)}%"></i></span>`;
+  }
+  const scanBox = (hint) => `<div class="panel"><div class="row"><label for="scan">Scan box</label><input type="text" id="scan" value="${esc(S.scanBuf)}" placeholder="Scan with a USB scanner, or type a UPC or SKU and press Enter" autocomplete="off" style="flex:1;min-width:200px"></div><p class="hint">${hint || "In open lab, plug in the real USB scanner, click in this box and scan. The Scan buttons below act like pulling the trigger with your scanner's current settings."}</p></div>`;
+  function vHome() {
+    return `<div><h1>Overview</h1><p class="sub">Miller's Hardware keeps running out of things its records say it has. You'll set up the new scanner and label printer, count an aisle, receive a delivery, set reorder points and fix labels that won't scan.</p></div>
+      <div class="ticket"><b>Message from Carol Miller, owner</b><span>"We ran out of 2-inch deck screws again. The count sheet said 40 boxes; the shelf was empty and a contractor walked out. We bought a scanner and a label printer, but the scanner beeps and nothing happens, and the printer spits out blank labels. Tuesday's delivery is on the counter, aisle 7 needs a count, and half our sale tags won't scan. Help!"</span></div>
+      <div class="panel"><h2>How this lab works</h2><p class="hint">Start with <b>Scanner setup</b>, since nothing scans right until the scanner is configured. The <b>Barcode workshop</b> is where you build and check UPCs. <b>Aisle 7 count</b> and <b>Receiving</b> use the scanner. <b>Reorder points</b> stops the deck screws from running out. Then set up the <b>Label printer</b> and work through <b>Troubleshooting</b>. Copy your report from <b>Submit report</b>.</p></div>
+      <div class="panel"><h2>Recent activity</h2>${logHTML(6)}</div>`;
+  }
+  function vScanner() {
+    const sc = S.scanner;
+    return `<div><h1>Scanner setup</h1><p class="sub">Most handheld scanners are configured by scanning special programming barcodes from the manual. Scan the ones you need. The scanner remembers the setting even after it's unplugged.</p></div>
+      <div class="panel"><h2>Current settings</h2><div class="tablewrap"><table><tbody>
+        <tr><td>Model</td><td>Corded handheld linear imager (reads 1D barcodes, including from many screens)</td></tr>
+        <tr><td>Interface</td><td>${sc.mode === "HID" ? '<span class="pill good">USB keyboard (HID)</span> types into whatever window is active' : '<span class="pill warn">USB serial (COM)</span> sends data to a COM port that only special software listens to'}</td></tr>
+        <tr><td>Suffix</td><td>${sc.suffix === "Enter" ? '<span class="pill good">Enter</span>' : `<span class="pill warn">${sc.suffix}</span>`} (the key sent after each scan)</td></tr>
+        <tr><td>Symbologies</td><td>UPC-A on · EAN-13 on · Code 128 ${sc.c128 ? '<span class="pill good">on</span>' : '<span class="pill warn">off</span>'} · QR not supported by this scanner</td></tr></tbody></table></div></div>
+      <div class="prodgrid">${PROG.map(([k, v, l, code], i) => `<div class="prod"><b>${l}</b>${c128SVG(code, { h: 40, noText: false })}<button class="btn small" data-prog="${i}">Scan this programming barcode</button></div>`).join("")}</div>
+      ${scanBox("Test here: scan or type a known-good UPC, like the deck screws, and press Enter. A good test tells you whether the problem is the scanner, the label or the software.")}
+      <div class="prod" style="max-width:280px"><b>Known-good test label</b>${upcSVG(item("SCR-DECK-2IN").upc)}<button class="btn small" data-scan="${item("SCR-DECK-2IN").upc}" data-symb="UPC-A">Scan</button></div>`;
+  }
+  function vWorkshop() {
+    const g = S.glue, d11 = PREFIX + (g.item || "");
+    let steps = "";
+    if (g.ok || g.tries >= 2) {
+      const d = (PREFIX + GLUE_ITEM).split("").map(Number), odd = d.filter((_, i) => i % 2 === 0), even = d.filter((_, i) => i % 2 === 1), os = odd.reduce((a, b) => a + b, 0), es = even.reduce((a, b) => a + b, 0), tot = os * 3 + es;
+      steps = `<div class="steps"><span>1. Odd positions: ${odd.join(" + ")} = ${os}</span><span>2. Times 3: ${os} × 3 = ${os * 3}</span><span>3. Even positions: ${even.join(" + ")} = ${es}</span><span>4. Add them: ${os * 3} + ${es} = ${tot}</span><span>5. Next multiple of 10 is ${Math.ceil(tot / 10) * 10}, so the check digit is ${checkDigit(PREFIX + GLUE_ITEM)}</span></div>`;
+    }
+    return `<div><h1>Barcode workshop</h1><p class="sub">A UPC-A has 12 digits: a number system digit and company prefix, an item number the company assigns, and a check digit calculated from the first 11.</p></div>
+      <div class="grid2"><div class="panel stepper"><h2>New item: house-brand wood glue</h2>
+        <p class="hint">Miller's practice company prefix is <b class="mono">${PREFIX}</b>. It starts with 4, a range GS1 sets aside for a store's in-house use. Carol assigned the glue item number <b class="mono">${GLUE_ITEM}</b>.</p>
+        <div class="row"><span class="mono">${PREFIX}</span><label for="glItem">Item number</label><input type="text" id="glItem" maxlength="5" value="${esc(g.item)}" style="width:90px" class="mono"><label for="glCheck">Check digit</label><input type="text" id="glCheck" maxlength="1" value="${esc(g.check)}" style="width:50px" class="mono"><button class="btn primary" id="glGo">Check my math</button></div>
+        ${g.ok ? `<div class="notice good">Correct. The full UPC is ${GLUE}.</div>${upcSVG(GLUE)}` : g.tries ? `<div class="notice bad">Not quite. ${g.tries >= 2 ? "Here are the steps." : "Odd positions are the 1st, 3rd, 5th and so on of the first 11 digits. Multiply their sum by 3, add the even positions, then find what reaches the next multiple of 10."}</div>` : ""}${steps}</div>
+      <div class="panel stepper"><h2>Check the supplier's invoice</h2><p class="hint">Badger Fastener Supply's invoice lists these UPCs. One digit was typed wrong on one line. Use the check digit to find it.</p>
+        ${INVOICE.map(([sku, code]) => `<div class="row" style="justify-content:space-between"><span><b>${esc(item(sku).name)}</b><br><span class="mono">${code}</span></span><span><label><input type="radio" name="inv-${sku}" data-inv="${sku}" value="valid" ${S.invoice[sku] === "valid" ? "checked" : ""}> Valid</label> <label><input type="radio" name="inv-${sku}" data-inv="${sku}" value="typo" ${S.invoice[sku] === "typo" ? "checked" : ""}> Typo</label></span></div>`).join("")}
+        <div class="row"><label for="anyUPC">Check any UPC</label><input type="text" id="anyUPC" maxlength="12" class="mono" style="width:150px"><button class="btn small" id="anyGo">Check</button><span id="anyOut" class="hint"></span></div></div></div>`;
+  }
+  function vCount() {
+    const cur = item(S.countCur);
+    const diffs = ITEMS.filter((i) => S.count[i.sku] != null && S.count[i.sku] !== S.sys[i.sku]);
+    const allCounted = ITEMS.every((i) => S.count[i.sku] != null);
+    return `<div><h1>Aisle 7 count</h1><p class="sub">A cycle count checks one section of the store at a time instead of closing for a full count. Scan each item, count what's on the shelf and enter it.</p></div>
+      ${scanBox()}
+      ${cur && !S.countPosted ? `<div class="panel"><div class="row"><b>${esc(cur.name)}</b><span class="mono hint">${cur.sku}</span><label for="cntQty">Counted on shelf</label><input type="number" id="cntQty" min="0" value="${S.count[cur.sku] ?? ""}"><button class="btn primary" id="cntGo">Save count</button></div></div>` : ""}
+      <div class="prodgrid">${ITEMS.map((i) => `<div class="prod"><b>${esc(i.name)}</b><span class="hint">${i.loc}</span>${i.upc ? upcSVG(i.upc, { mod: 1.4, h: 44 }) : S.binLabel ? c128SVG(i.sku, { h: 40 }) : '<div class="notice bad">Bin label torn off. Print one on the Label printer page, or type the SKU.</div>'}
+        <span>On the shelf: <span class="qty">${S.act[i.sku]}</span></span>${S.count[i.sku] != null ? `<span class="pill ${S.count[i.sku] === S.act[i.sku] ? "good" : "bad"}">Counted ${S.count[i.sku]}</span>` : ""}
+        ${i.upc ? `<button class="btn small" data-scan="${i.upc}" data-symb="UPC-A">Scan</button>` : S.binLabel ? `<button class="btn small" data-scan="${i.sku}" data-symb="${S.binLabel.symb}">Scan</button>` : ""}</div>`).join("")}</div>
+      <div class="panel"><h2>Store notes</h2><p class="hint">Oct 3: The deck screw delivery (32 boxes) was keyed into the system twice by mistake.<br>Returns bin: a contractor returned 3 packs of drywall anchors last week. They went back on the shelf, but nobody entered the return.<br>The loose hex bolt bin sits in an open bin by the front door.</p></div>
+      ${S.countPosted ? `<div class="panel"><h2>Adjustments posted</h2>${(S.adjust || []).map((a) => `<p class="hint">${esc(item(a.sku).name)}: ${a.from} → ${a.to} (${(REASONS.find((r) => r[0] === a.reason) || [, a.reason])[1]})</p>`).join("") || '<p class="hint">No changes were needed.</p>'}<div class="notice good">Count posted. The system now matches the shelf.</div></div>` : allCounted ? `<div class="panel"><h2>Differences</h2>${diffs.length ? `<div class="tablewrap"><table><thead><tr><th>Item</th><th>System</th><th>Counted</th><th>Difference</th><th>Reason</th></tr></thead><tbody>${diffs.map((i) => `<tr><td>${esc(i.name)}</td><td>${S.sys[i.sku]}</td><td>${S.count[i.sku]}</td><td>${S.count[i.sku] - S.sys[i.sku] > 0 ? "+" : ""}${S.count[i.sku] - S.sys[i.sku]}</td><td><select data-reason="${i.sku}" ${S.countPosted ? "disabled" : ""}><option value="">Choose a reason</option>${REASONS.map(([k, l]) => `<option value="${k}" ${S.reasons[i.sku] === k ? "selected" : ""}>${l}</option>`).join("")}</select></td></tr>`).join("")}</tbody></table></div>` : '<p class="hint">Everything matches.</p>'}
+        <div class="row"><button class="btn primary" id="postCount">Post count</button></div></div>` : ""}`;
+  }
+  function vReceive() {
+    const cur = item(S.rcvCur), lines = S.rcvLines;
+    return `<div><h1>Receiving</h1><p class="sub">Tuesday's delivery from Badger Fastener Supply is on the counter. Receive what's actually in the box. The packing slip is what the supplier says they sent.</p></div>
+      <div class="grid2" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><div class="slip"><b>PACKING SLIP · PO 7741</b><span>Badger Fastener Supply</span>${SLIP.map(([sku, q]) => `<span>${q.toString().padStart(3)}  ${esc(item(sku).name)}</span>`).join("")}</div>
+      <div class="box"><b>What's in the box</b>${Object.entries(BOX).map(([sku, q]) => `<div class="row" style="justify-content:space-between"><span>${q} × ${esc(item(sku).name)}</span><button class="btn small" data-scan="${item(sku).upc}" data-symb="UPC-A">Scan</button></div>`).join("")}</div></div>
+      ${scanBox()}
+      ${cur ? `<div class="panel"><div class="row"><b>${esc(cur.name)}</b><label for="rcvQty">Quantity received</label><input type="number" id="rcvQty" min="0" value="${lines[cur.sku] ?? ""}"><button class="btn primary" id="rcvGo">Add to receipt</button></div></div>` : ""}
+      <div class="panel"><h2>Receipt</h2>${Object.keys(lines).length ? `<div class="tablewrap"><table><thead><tr><th>Item</th><th>Slip says</th><th>Received</th></tr></thead><tbody>${SLIP.map(([sku, q]) => `<tr><td>${esc(item(sku).name)}</td><td>${q}</td><td>${lines[sku] ?? "—"}</td></tr>`).join("")}</tbody></table></div>` : '<p class="hint">Scan each item to start the receipt.</p>'}
+        <div class="row"><button class="btn primary" id="postRcv" ${Object.keys(lines).length ? "" : "disabled"}>Post receipt</button>${S.receipts.length ? '<button class="btn" id="undoRcv">Undo last receipt</button>' : ""}</div>
+        ${S.receipts.length ? `<div class="notice good">${S.receipts.length} receipt${S.receipts.length > 1 ? "s" : ""} posted.</div>` : ""}
+        ${rcvOK() ? (S.shortageReported ? '<div class="notice good">Shortage reported to Badger Fastener Supply. They\'ll ship the missing duct tape or credit the invoice.</div>' : '<button class="btn" id="shortGo">Email the supplier about the shortage</button>') : ""}</div>`;
+  }
+  function vReorder() {
+    return `<div><h1>Reorder points</h1><p class="sub">The reorder point is the on-hand number that triggers ordering more. Reorder point = daily sales × lead time (days to deliver) + safety stock. Par is how many Carol wants on hand after a delivery.</p></div>
+      <div class="tablewrap"><table><thead><tr><th>Item</th><th>Sells per day</th><th>Lead time</th><th>Safety stock</th><th>Reorder point</th><th>Par</th><th>On hand (system)</th><th>Status</th></tr></thead><tbody>
+      ${ITEMS.map((i) => `<tr><td>${esc(i.name)}</td><td>${i.daily}</td><td>${i.lead} days</td><td>${i.safety}</td><td><input type="number" min="0" data-rop="${i.sku}" value="${S.rop[i.sku]}" style="width:80px" aria-label="Reorder point for ${esc(i.name)}"></td><td>${i.par}</td><td>${S.sys[i.sku]}</td><td>${S.sys[i.sku] <= S.rop[i.sku] ? '<span class="pill bad">REORDER</span>' : '<span class="pill good">OK</span>'}</td></tr>`).join("")}
+      </tbody></table></div>
+      <div class="row"><button class="btn primary" id="mkReorder">Create reorder list</button><span class="hint">Post the count and the delivery first so the numbers are right.</span></div>
+      ${S.reorder ? `<div class="panel"><h2>Reorder list</h2>${S.reorder.length ? `<div class="tablewrap"><table><thead><tr><th>Item</th><th>On hand</th><th>Order</th></tr></thead><tbody>${S.reorder.map((r) => `<tr><td>${esc(item(r.sku).name)}</td><td>${r.onHand}</td><td><b>${r.qty}</b></td></tr>`).join("")}</tbody></table></div>` : '<p class="hint">Nothing is at or below its reorder point.</p>'}</div>` : ""}`;
+  }
+  function vPrinter() {
+    const p = S.printer;
+    const sel = (id, opts, v) => `<select id="${id}" data-pr="${id}">${opts.map((o) => `<option ${o === v ? "selected" : ""}>${o}</option>`).join("")}</select>`;
+    return `<div><h1>Label printer</h1><p class="sub">A desktop thermal label printer. A new roll of 2 × 1 inch synthetic shelf labels and a ribbon were just loaded.</p></div>
+      <div class="panel">
+        <div class="policy"><div><b>Label size</b><p class="help">Must match the roll that's loaded.</p></div>${sel("size", ["4 × 6 in (shipping)", "2 × 1 in (shelf and bin)", "1.25 × 1 in (small items)"], p.size)}</div>
+        <div class="policy"><div><b>Print resolution</b><p class="help">203 dpi is standard. 300 dpi prints small barcodes and text more sharply.</p></div>${sel("dpi", ["203", "300"], p.dpi)}</div>
+        <div class="policy"><div><b>Print method</b><p class="help">Direct thermal darkens heat-sensitive paper; no ribbon, but it fades. Thermal transfer melts ink from a ribbon onto the label and lasts for years.</p></div>${sel("method", ["Direct thermal", "Thermal transfer"], p.method)}</div>
+        <div class="policy"><div><b>Ribbon</b><p class="help">Wax for paper labels, wax-resin for most shelf labels, resin for harsh conditions. Direct thermal uses no ribbon.</p></div>${sel("ribbon", ["None", "Wax", "Wax-resin", "Resin"], p.ribbon)}</div>
+        <div class="policy"><div><b>Media type</b><p class="help">How the printer finds the start of each label.</p></div>${sel("media", ["Gap (die-cut labels)", "Black mark", "Continuous"], p.media)}</div>
+        <div class="policy"><div><b>Calibration</b><p class="help">Feeds a few labels so the sensor learns where each label starts. Do it after loading a different roll.</p></div><div class="row">${p.calibrated ? '<span class="pill good">Calibrated</span>' : '<span class="pill warn">Not calibrated for this roll</span>'}<button class="btn small" id="calGo">Calibrate</button></div></div>
+        <div class="row"><button class="btn" id="testPrint">Print a test label</button><span id="testOut" class="hint"></span></div></div>
+      <div class="panel"><h2>Bin label for the loose hex bolts</h2><p class="hint">SKU <b class="mono">BLT-HEX-38</b>, aisle 7, bin 12. The bolts have no UPC.</p>
+        <div class="row"><label for="symb">Barcode type</label>${sel("symb", ["UPC-A", "Code 128", "QR code"], p.symb)}<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="hr" ${p.hr ? "checked" : ""}>Print readable text under the barcode</label><button class="btn primary" id="binPrint">Print bin label</button></div>
+        <div id="binOut"></div>
+        ${S.binLabel ? `<div class="lbl"><b style="font-size:13px">3/8" HEX BOLTS · each</b>${S.binLabel.symb === "Code 128" ? c128SVG("BLT-HEX-38", { h: 46, noText: !S.binLabel.hr }) : qrSVG()}<span style="font-size:11px">Aisle 7 · Bin 12</span></div>
+          <div class="row"><button class="btn small" data-scan="BLT-HEX-38" data-symb="${S.binLabel.symb === "Code 128" ? "Code 128" : "QR"}">Scan the printed label</button>${S.binTested ? '<span class="pill good">Scans</span>' : ""}</div>` : ""}</div>
+      ${scanBox("You can also scan the printed label with a real scanner in open lab.")}`;
+  }
+  function vTrouble() {
+    return `<div><h1>Troubleshooting</h1><p class="sub">Five barcodes around the store won't scan. For each one, pick the cause and the fix.</p></div>
+      ${CASES.map((c, i) => { const a = S.trouble[c.id] || {}; const ok = a.cause === c.cause && a.fix === c.fix; return `<div class="case"><div class="pic">${c.pic()}</div><div class="stepper"><b>${i + 1}. ${c.title}</b><p class="hint">${c.say}</p>
+        <label for="tc-${c.id}">Cause</label><select id="tc-${c.id}" data-tc="${c.id}"><option value="">Choose the cause</option>${CAUSES.map(([k, l]) => `<option value="${k}" ${a.cause === k ? "selected" : ""}>${l}</option>`).join("")}</select>
+        <label for="tf-${c.id}">Fix</label><select id="tf-${c.id}" data-tf="${c.id}"><option value="">Choose the fix</option>${FIXES.map(([k, l]) => `<option value="${k}" ${a.fix === k ? "selected" : ""}>${l}</option>`).join("")}</select>
+        ${a.cause && a.fix ? (ok ? '<span class="pill good">Fixed: it scans now</span>' : '<span class="pill bad">Still won\'t scan</span>') : ""}</div></div>`; }).join("")}`;
+  }
+  function vMissions() {
+    const ms = missions();
+    return `<div><h1>Carol's checklist</h1><p class="sub">Each item checks itself as soon as it's done.</p></div>
+      <div class="panel">${ms.map((m, i) => `<div class="mission"><span class="check ${m.ok ? "done" : "todo"}">${m.ok ? "✓" : i + 1}</span><div><b>${m.t}</b><p class="hint">${m.d}</p></div></div>`).join("")}</div>`;
+  }
+  function logHTML(n) { return `<div class="log">${S.log.slice(0, n).map((l) => `<div><time>${l.t}</time><span>${esc(l.m)}</span></div>`).join("")}</div>`; }
+  function vLog() { return `<div><h1>Activity log</h1><p class="sub">Every scan and change, newest first. Use it to fill in your troubleshooting log.</p></div><div class="panel">${logHTML(300)}</div>`; }
+  function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).toUpperCase().padStart(7, "0"); }
+  function reportText() {
+    const ms = missions(), sc = S.scanner, p = S.printer;
+    const body = [
+      "Barcode and Inventory Lab report (Miller's Hardware)",
+      `Clerk: ${S.student || "(name not entered)"}`,
+      `Generated: ${new Date().toLocaleString()}`,
+      `Checklist: ${ms.filter((m) => m.ok).length} of ${ms.length} complete`,
+      ...ms.map((m) => `  [${m.ok ? "x" : " "}] ${m.t}`),
+      "", `Scanner: ${sc.mode === "HID" ? "USB keyboard (HID)" : "USB serial (COM)"}; suffix ${sc.suffix}; Code 128 ${sc.c128 ? "on" : "off"}`,
+      `Wood glue UPC: ${S.glue.ok ? GLUE : `not finished (item ${S.glue.item || "-"}, check digit ${S.glue.check || "-"})`}`,
+      `Invoice check: ${INVOICE.map(([sku, code]) => `${code}=${S.invoice[sku] || "-"}`).join("; ")}`,
+      "Aisle 7 count:", ...ITEMS.map((i) => `  ${i.sku}: counted ${S.count[i.sku] ?? "-"}${S.reasons[i.sku] ? `, reason ${S.reasons[i.sku]}` : ""}`),
+      `Count posted: ${S.countPosted ? "yes" : "no"}`,
+      `Receipts: ${S.receipts.map((r) => Object.entries(r).map(([k, v]) => `${k} ${v}`).join(", ")).join(" | ") || "none"}; shortage reported ${S.shortageReported ? "yes" : "no"}`,
+      "Reorder points:", ...ITEMS.map((i) => `  ${i.sku}: ROP ${S.rop[i.sku]}, on hand ${S.sys[i.sku]}, par ${i.par}`),
+      `Reorder list: ${S.reorder ? (S.reorder.map((r) => `${r.sku} x${r.qty}`).join("; ") || "nothing low") : "not created"}`,
+      `Label printer: ${p.size}; ${p.dpi} dpi; ${p.method}; ribbon ${p.ribbon}; ${p.media}; ${p.calibrated ? "calibrated" : "NOT calibrated"}`,
+      `Bin label: ${S.binLabel ? `${S.binLabel.symb}${S.binLabel.hr ? " with readable text" : ""}; test scan ${S.binTested ? "passed" : "not done"}` : "not printed"}`,
+      `Troubleshooting: ${CASES.map((c, i) => `${i + 1}=${(S.trouble[c.id] || {}).cause || "-"}/${(S.trouble[c.id] || {}).fix || "-"}`).join("; ")}`,
+      "", `Changes logged: ${S.log.length}`,
+    ].join("\n");
+    return body + `\nVerification code: ${hash((S.student || "") + "|" + body.replace(/Generated: .*\n/, ""))}`;
+  }
+  function vReport() {
+    return `<div><h1>Submit report</h1><p class="sub">Enter your name, then copy this report into your Solve It submission. The verification code changes whenever your work or name changes.</p></div>
+      <div class="panel"><div class="row"><label for="stuName">Your name</label><input type="text" id="stuName" value="${esc(S.student)}" placeholder="First and last name"><button class="btn primary" id="saveName">Save name</button></div></div>
+      <div class="panel"><div class="row" style="justify-content:space-between"><h2>Inventory lab report</h2><button class="btn" id="copyRep">Copy report</button></div>
+      <div class="tablewrap" style="border:none"><pre class="mono" id="repText" style="margin:0;white-space:pre-wrap;font-size:13px">${esc(reportText())}</pre></div></div>`;
+  }
+  function render() {
+    renderNav();
+    const v = { home: vHome, scanner: vScanner, workshop: vWorkshop, count: vCount, receive: vReceive, reorder: vReorder, printer: vPrinter, trouble: vTrouble, missions: vMissions, log: vLog, report: vReport }[S.view] || vHome;
+    $("#work").innerHTML = v();
+    save();
+  }
+
+  // ---------- Events ----------
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button"); if (!t || t.disabled) return;
+    if (t.dataset.view) { S.view = t.dataset.view; S.scanBuf = ""; render(); return; }
+    if (t.dataset.scan) { simScan(t.dataset.scan, t.dataset.symb); return; }
+    if (t.dataset.prog) { const [k, v, l] = PROG[+t.dataset.prog]; S.scanner[k] = v; log(`Scanned programming barcode: ${l}.`); render(); toast(`Beep beep! ${l}.`); return; }
+    switch (t.id) {
+      case "resetBtn": $("#layer").innerHTML = `<div class="overlay"><div class="dialog" role="dialog" aria-modal="true"><h2>Reset the simulator?</h2><p>This erases your counts, settings and log.</p><div class="row" style="justify-content:flex-end"><button class="btn" id="rsCancel">Keep my work</button><button class="btn danger" id="rsGo">Reset</button></div></div></div>`; break;
+      case "rsCancel": $("#layer").innerHTML = ""; break;
+      case "rsGo": S = seed(); $("#layer").innerHTML = ""; render(); toast("Simulator reset."); break;
+      case "glGo": { const it = $("#glItem").value.trim(), ck = $("#glCheck").value.trim(); S.glue.item = it; S.glue.check = ck;
+        if (it !== GLUE_ITEM) { toast(`Use the item number Carol assigned: ${GLUE_ITEM}.`); render(); return; }
+        if (ck === String(checkDigit(PREFIX + it))) { S.glue.ok = true; log(`Built the wood glue UPC: ${GLUE}.`); } else { S.glue.tries++; log(`Wood glue check digit attempt ${S.glue.tries}: ${ck || "(blank)"} was wrong.`); }
+        render(); break; }
+      case "anyGo": { const v = $("#anyUPC").value.trim(); $("#anyOut").textContent = !/^\d{12}$/.test(v) ? "A UPC-A has exactly 12 digits." : validUPC(v) ? "Valid: the check digit matches." : `Not valid: the check digit should be ${checkDigit(v.slice(0, 11))}, not ${v[11]}. One of the digits is probably wrong.`; break; }
+      case "cntGo": { const q = parseInt($("#cntQty").value, 10); if (!(q >= 0)) { toast("Enter the number you counted."); return; } S.count[S.countCur] = q; log(`Counted ${S.countCur}: ${q}.`); S.countCur = ""; render(); break; }
+      case "postCount": { const diffs = ITEMS.filter((i) => S.count[i.sku] !== S.sys[i.sku]); if (diffs.some((i) => !S.reasons[i.sku])) { toast("Choose a reason for every difference first."); return; }
+        if (ITEMS.some((i) => S.count[i.sku] !== S.act[i.sku])) { toast("At least one count doesn't match the shelf. Recount before posting."); return; }
+        S.adjust = diffs.map((i) => ({ sku: i.sku, from: S.sys[i.sku], to: S.count[i.sku], reason: S.reasons[i.sku] })); diffs.forEach((i) => { log(`Adjusted ${i.sku} from ${S.sys[i.sku]} to ${S.count[i.sku]} (${S.reasons[i.sku]}).`); S.sys[i.sku] = S.count[i.sku]; }); S.countPosted = true; render(); toast("Count posted."); break; }
+      case "rcvGo": { const q = parseInt($("#rcvQty").value, 10); if (!(q >= 0)) { toast("Enter the quantity."); return; } S.rcvLines[S.rcvCur] = q; log(`Receipt line: ${S.rcvCur} × ${q}.`); S.rcvCur = ""; render(); break; }
+      case "postRcv": { const over = Object.entries(S.rcvLines).find(([sku, q]) => q > BOX[sku]); if (over) { toast(`You entered ${over[1]} ${item(over[0]).name}, but you can only count ${BOX[over[0]]} in the box. Receive what you count, not what the slip says.`); log(`Receipt blocked: ${over[0]} entered higher than the box holds.`); save(); return; }
+        const r = Object.assign({}, S.rcvLines); Object.entries(r).forEach(([sku, q]) => { S.sys[sku] += q; S.act[sku] += q; }); S.receipts.push(r); S.rcvLines = {};
+        const short = SLIP.filter(([sku, q]) => (r[sku] || 0) < q).map(([sku, q]) => `${item(sku).name} (slip ${q}, received ${r[sku] || 0})`);
+        log(`Posted receipt for PO 7741: ${Object.entries(r).map(([k, v]) => `${k} ${v}`).join(", ")}.${short.length ? " Short: " + short.join("; ") + "." : ""}`); render(); toast(short.length ? "Receipt posted. Some items came up short." : "Receipt posted."); break; }
+      case "undoRcv": { const r = S.receipts.pop(); Object.entries(r).forEach(([sku, q]) => { S.sys[sku] -= q; S.act[sku] -= q; }); S.shortageReported = false; log("Reversed the last receipt."); render(); break; }
+      case "shortGo": S.shortageReported = true; log("Emailed Badger Fastener Supply: PO 7741 arrived 4 rolls of duct tape short (slip 24, received 20)."); render(); toast("Shortage reported."); break;
+      case "mkReorder": S.reorder = lowItems().map((i) => ({ sku: i.sku, onHand: S.sys[i.sku], qty: i.par - S.sys[i.sku] })); log(`Created reorder list: ${S.reorder.map((r) => `${r.sku} × ${r.qty}`).join(", ") || "nothing low"}.`); render(); break;
+      case "calGo": S.printer.calibrated = true; log("Calibrated the label printer for the loaded roll."); render(); toast("Calibrated."); break;
+      case "testPrint": { const p = S.printer; const out = !p.size.startsWith("2 × 1") ? "The printer is set for a different label size than the roll: the print is cut off and labels skip." : !p.calibrated ? "Printed one label, then fed two blank ones. The sensor doesn't know where these labels start." : p.method === "Thermal transfer" && p.ribbon === "None" ? "Blank label: thermal transfer needs a ribbon selected." : p.method === "Direct thermal" ? "Faint print: these synthetic labels aren't heat-sensitive paper. They need thermal transfer." : "Crisp test label. Ready to print.";
+        $("#testOut").textContent = out; log(`Test print: ${out}`); save(); break; }
+      case "binPrint": { const p = S.printer, out = $("#binOut");
+        if (!printerReady()) { out.innerHTML = '<div class="notice bad">Fix the printer settings first. A test label should come out crisp.</div>'; return; }
+        if (p.symb === "UPC-A") { out.innerHTML = '<div class="notice bad">Can\'t print: UPC-A holds exactly 12 digits, and this SKU has letters and dashes.</div>'; log("Bin label failed: UPC-A can't hold BLT-HEX-38."); save(); return; }
+        S.binLabel = { symb: p.symb === "Code 128" ? "Code 128" : "QR", hr: p.hr }; S.binTested = false; log(`Printed hex bolt bin label as ${S.binLabel.symb}${p.hr ? " with readable text" : " without readable text"}.`); render(); break; }
+      case "saveName": S.student = $("#stuName").value.trim(); log(`Clerk name set to "${S.student}".`); render(); toast("Name saved."); break;
+      case "copyRep": { const txt = $("#repText").textContent; const fb = () => { const r = document.createRange(); r.selectNodeContents($("#repText")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Report selected. Press Ctrl + C (or Cmd + C) to copy."); };
+        try { navigator.clipboard.writeText(txt).then(() => toast("Report copied."), fb); } catch (err) { fb(); } break; }
+    }
+  });
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.dataset.inv) { S.invoice[t.dataset.inv] = t.value; log(`Invoice line ${t.dataset.inv} marked ${t.value}.`); render(); }
+    else if (t.dataset.reason) { S.reasons[t.dataset.reason] = t.value; render(); }
+    else if (t.dataset.rop) { const v = parseInt(t.value, 10); if (v >= 0) { S.rop[t.dataset.rop] = v; log(`Reorder point for ${t.dataset.rop} set to ${v}.`); } render(); }
+    else if (t.dataset.pr) { const k = t.dataset.pr; const before = S.printer[k]; S.printer[k] = t.value; if ((k === "size" || k === "media") && before !== t.value) S.printer.calibrated = false; log(`Printer: ${k} set to ${t.value}.`); render(); }
+    else if (t.id === "hr") { S.printer.hr = t.checked; render(); }
+    else if (t.dataset.tc || t.dataset.tf) { const id = t.dataset.tc || t.dataset.tf; S.trouble[id] = S.trouble[id] || {}; S.trouble[id][t.dataset.tc ? "cause" : "fix"] = t.value; const c = CASES.find((x) => x.id === id), a = S.trouble[id]; if (a.cause && a.fix) log(`Troubleshooting "${c.title}": ${a.cause === c.cause && a.fix === c.fix ? "fixed" : "not fixed yet"}.`); render(); }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && $("#layer .overlay")) $("#layer").innerHTML = "";
+    if (e.key === "Enter" && e.target.id === "scan") { e.preventDefault(); const v = e.target.value; e.target.value = ""; submit(v, true); const s = $("#scan"); if (s) s.focus(); }
+    if (e.key === "Enter" && e.target.id === "cntQty") $("#cntGo").click();
+    if (e.key === "Enter" && e.target.id === "rcvQty") $("#rcvGo").click();
+  });
+  render();
+})();
+</script>
+
+</body>
+</html>
